@@ -1,54 +1,30 @@
 INFO:core:POX 0.2.0 (carp) is up.
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-WARNING:openflow.of_01:<class 'pox.openflow.PortStatus'> raised on dummy OpenFlow nexus
-INFO:openflow.of_01:[3a-2c-c5-d1-30-40 1] connected
-INFO:openflow.of_01:[00-00-00-00-00-09 13] connected
-INFO:openflow.of_01:[00-00-00-00-00-02 3] connected
-INFO:openflow.of_01:[00-00-00-00-00-07 14] connected
-INFO:openflow.of_01:[00-00-00-00-00-06 4] connected
-INFO:openflow.of_01:[00-00-00-00-00-03 15] connected
-INFO:openflow.of_01:[00-00-00-00-00-08 5] connected
-INFO:openflow.of_01:[00-00-00-00-00-07 16] connected
-INFO:openflow.of_01:[8e-52-6f-2b-2d-42 6] connected
-INFO:openflow.of_01:[00-00-00-00-00-05 17] connected
-INFO:openflow.of_01:[00-00-00-00-00-02 7] connected
-INFO:openflow.of_01:[00-00-00-00-00-08 18] connected
-INFO:jelly_controller:packet in
-INFO:openflow.of_01:[00-00-00-00-00-09 8] connected
-INFO:jelly_controller:packet in
-INFO:openflow.of_01:[00-00-00-00-00-03 19] connected
-INFO:openflow.of_01:[00-00-00-00-00-05 9] connected
-INFO:openflow.of_01:[00-00-00-00-00-01 10] connected
-INFO:openflow.of_01:[00-00-00-00-00-04 11] connected
-INFO:jelly_controller:packet in
-INFO:jelly_controller:packet in
-INFO:openflow.of_01:[00-00-00-00-00-06 12] connected
+INFO:openflow.of_01:[00-00-00-00-00-06 3] connected
+INFO:openflow.of_01:[00-00-00-00-00-02 10] connected
+INFO:openflow.of_01:[16-f6-cd-b3-97-4d 5] connected
+INFO:openflow.of_01:[00-00-00-00-00-07 6] connected
+INFO:openflow.of_01:[00-00-00-00-00-01 8] connected
 INFO:openflow.of_01:[00-00-00-00-00-04 2] connected
+INFO:openflow.of_01:[00-00-00-00-00-06 1] connected
+INFO:openflow.of_01:[00-00-00-00-00-05 7] connected
+INFO:openflow.of_01:[00-00-00-00-00-08 11] connected
+INFO:openflow.of_01:[00-00-00-00-00-03 12] connected
+INFO:openflow.of_01:[00-00-00-00-00-09 9] connected
+INFO:openflow.of_01:[00-00-00-00-00-02 4] connected
+INFO:openflow.of_01:[00-00-00-00-00-05 13] connected
+INFO:openflow.of_01:[00-00-00-00-00-01 14] connected
+INFO:openflow.of_01:[00-00-00-00-00-03 16] connected
+INFO:openflow.of_01:[26-7a-b6-61-3b-45 17] connected
+INFO:openflow.of_01:[00-00-00-00-00-07 15] connected
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
-INFO:openflow.of_01:[00-00-00-00-00-02 26] connected
-INFO:openflow.of_01:[00-00-00-00-00-06 27] connected
-INFO:openflow.of_01:[00-00-00-00-00-09 22] connected
-INFO:openflow.of_01:[00-00-00-00-00-06 24] connected
-INFO:openflow.of_01:[00-00-00-00-00-03 21] connected
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
-INFO:openflow.of_01:[00-00-00-00-00-01 20] connected
-INFO:openflow.of_01:[00-00-00-00-00-02 23] connected
-INFO:openflow.of_01:[00-00-00-00-00-02 25] connected
 INFO:jelly_controller:packet in
+INFO:openflow.of_01:[00-00-00-00-00-04 18] connected
+INFO:openflow.of_01:[00-00-00-00-00-09 19] connected
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
-INFO:openflow.of_01:[00-00-00-00-00-08 29] connected
-INFO:openflow.of_01:[00-00-00-00-00-08 28] connected
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
@@ -82,30 +58,12 @@ INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
-INFO:openflow.of_01:[00-00-00-00-00-06 31] connected
-INFO:openflow.of_01:[00-00-00-00-00-0a 30] connected
-INFO:openflow.of_01:[00-00-00-00-00-03 34] connected
-INFO:openflow.of_01:[00-00-00-00-00-05 40] connected
-INFO:openflow.of_01:[00-00-00-00-00-07 36] connected
-INFO:openflow.of_01:[00-00-00-00-00-01 39] connected
-INFO:openflow.of_01:[00-00-00-00-00-09 32] connected
-INFO:openflow.of_01:[00-00-00-00-00-04 37] connected
-INFO:openflow.of_01:[00-00-00-00-00-06 33] connected
-INFO:openflow.of_01:[00-00-00-00-00-03 35] connected
-INFO:openflow.of_01:[00-00-00-00-00-05 38] connected
-INFO:openflow.of_01:[00-00-00-00-00-02 42] connected
-INFO:openflow.of_01:[00-00-00-00-00-01 41] connected
-INFO:openflow.of_01:[00-00-00-00-00-0a 43] connected
-INFO:openflow.of_01:[00-00-00-00-00-09 45] connected
-INFO:openflow.of_01:[00-00-00-00-00-08 46] connected
-INFO:openflow.of_01:[00-00-00-00-00-07 44] connected
-INFO:openflow.of_01:[00-00-00-00-00-09 48] connected
-INFO:openflow.of_01:[00-00-00-00-00-05 47] connected
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
+INFO:openflow.of_01:[00-00-00-00-00-08 20] connected
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
@@ -137,18 +95,301 @@ INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
-INFO:openflow.of_01:[00-00-00-00-00-08 50] connected
-INFO:openflow.of_01:[00-00-00-00-00-0a 49] connected
-INFO:openflow.of_01:[00-00-00-00-00-05 56] connected
-INFO:openflow.of_01:[00-00-00-00-00-04 57] connected
-INFO:openflow.of_01:[00-00-00-00-00-01 53] connected
-INFO:openflow.of_01:[00-00-00-00-00-07 58] connected
-INFO:openflow.of_01:[00-00-00-00-00-04 54] connected
-INFO:openflow.of_01:[00-00-00-00-00-07 60] connected
-INFO:openflow.of_01:[00-00-00-00-00-01 59] connected
-INFO:openflow.of_01:[00-00-00-00-00-04 52] connected
-INFO:openflow.of_01:[00-00-00-00-00-03 51] connected
-INFO:openflow.of_01:[00-00-00-00-00-0a 55] connected
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
+INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in
 INFO:jelly_controller:packet in

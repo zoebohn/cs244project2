@@ -22,24 +22,31 @@ class JellyFishTop(Topo):
             nodes = graph.nodes()
            
             # todo not repeating edges now, but don't double create hosts (?)
-            for node in nodes: 
+            nodeToHost = {}
+            for node in nodes:
                 hostString = 'h' + str(node)
                 nodeHost = self.addHost(hostString)
+                nodeToHost[node] = nodeHost
+
+            for node in nodes: 
+                nodeHost = nodeToHost[node]
                 neighbors = graph.neighbors(node)
                 print("node: " + str(node))
                 for neighbor in neighbors:
                     if (neighbor < node):
                         continue
                     print("neighbor: " + str(neighbor))
-                    hostString = 'h' + str(neighbor)
+                    neighborHost = nodeToHost[neighbor]
+                    
                     leftString = 's' + str(node) + 'x' + str(neighbor)
                     rightString = 's' + str(neighbor) + 'x' + str(node)
-                    neighborHost = self.addHost(hostString)
                     leftSwitch = self.addSwitch(leftString)
                     rightSwitch = self.addSwitch(rightString)
+                    
                     self.addLink(nodeHost, leftSwitch)
                     self.addLink(leftSwitch, rightSwitch)
                     self.addLink(rightSwitch, neighborHost)
+                print("***")
             #leftHost = self.addHost( 'h1' )
             #rightHost = self.addHost( 'h2' )
             #leftSwitch = self.addSwitch( 's3' )
