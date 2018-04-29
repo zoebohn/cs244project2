@@ -18,24 +18,28 @@ class JellyFishTop(Topo):
     ''' TODO, build your topology here'''
     def build(self):
             graph = nx.random_regular_graph(2, 10)   #(d, n, seed=None)
+            graph = graph.to_directed()
             nodes = graph.nodes()
-            
-            count = 1
+           
+            # todo not repeating edges now, but don't double create hosts (?)
             for node in nodes: 
-                nodeHost = self.addHost( 'h' + str(count))
+                hostString = 'h' + str(node)
+                nodeHost = self.addHost(hostString)
                 neighbors = graph.neighbors(node)
-                ncount = 1;
+                print("node: " + str(node))
                 for neighbor in neighbors:
-                    # todo don't add things twice
-                    neighborHost = self.addHost( 'h' + str(count) + 'n' + str(ncount))
-                    leftSwitch = self.addSwitch( 'sh' + str(count) + 'n' + str(ncount) + '1')
-                    rightSwitch = self.addSwitch( 'sh' + str(count) + 'n' + str(ncount) + '2')
+                    if (neighbor < node):
+                        continue
+                    print("neighbor: " + str(neighbor))
+                    hostString = 'h' + str(neighbor)
+                    leftString = 's' + str(node) + 'x' + str(neighbor)
+                    rightString = 's' + str(neighbor) + 'x' + str(node)
+                    neighborHost = self.addHost(hostString)
+                    leftSwitch = self.addSwitch(leftString)
+                    rightSwitch = self.addSwitch(rightString)
                     self.addLink(nodeHost, leftSwitch)
                     self.addLink(leftSwitch, rightSwitch)
                     self.addLink(rightSwitch, neighborHost)
-                    ncount += 1
-                count += 1
-            
             #leftHost = self.addHost( 'h1' )
             #rightHost = self.addHost( 'h2' )
             #leftSwitch = self.addSwitch( 's3' )
@@ -45,7 +49,6 @@ class JellyFishTop(Topo):
             #self.addLink( leftHost, leftSwitch )
             #self.addLink( leftSwitch, rightSwitch )
             #self.addLink( rightSwitch, rightHost )
-
 
 def experiment(net):
         net.start()
