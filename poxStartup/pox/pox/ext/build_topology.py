@@ -1,5 +1,6 @@
 import os
 import sys
+import networkx as nx
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.node import CPULimitedHost
@@ -16,16 +17,34 @@ from time import sleep, time
 class JellyFishTop(Topo):
     ''' TODO, build your topology here'''
     def build(self):
-
-            leftHost = self.addHost( 'h1' )
-            rightHost = self.addHost( 'h2' )
-            leftSwitch = self.addSwitch( 's3' )
-            rightSwitch = self.addSwitch( 's4' )
+            graph = nx.random_regular_graph(2, 10)   #(d, n, seed=None)
+            nodes = graph.nodes()
+            
+            count = 1
+            for node in nodes: 
+                nodeHost = self.addHost( 'h' + str(count))
+                neighbors = graph.neighbors(node)
+                ncount = 1;
+                for neighbor in neighbors:
+                    # todo don't add things twice
+                    neighborHost = self.addHost( 'h' + str(count) + 'n' + str(ncount))
+                    leftSwitch = self.addSwitch( 'sh' + str(count) + 'n' + str(ncount) + '1')
+                    rightSwitch = self.addSwitch( 'sh' + str(count) + 'n' + str(ncount) + '2')
+                    self.addLink(nodeHost, leftSwitch)
+                    self.addLink(leftSwitch, rightSwitch)
+                    self.addLink(rightSwitch, neighborHost)
+                    ncount += 1
+                count += 1
+            
+            #leftHost = self.addHost( 'h1' )
+            #rightHost = self.addHost( 'h2' )
+            #leftSwitch = self.addSwitch( 's3' )
+            #rightSwitch = self.addSwitch( 's4' )
 
             # Add links
-            self.addLink( leftHost, leftSwitch )
-            self.addLink( leftSwitch, rightSwitch )
-            self.addLink( rightSwitch, rightHost )
+            #self.addLink( leftHost, leftSwitch )
+            #self.addLink( leftSwitch, rightSwitch )
+            #self.addLink( rightSwitch, rightHost )
 
 
 def experiment(net):

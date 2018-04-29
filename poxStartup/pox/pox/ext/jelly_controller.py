@@ -83,17 +83,15 @@ class Tutorial (object):
     Implement switch-like behavior.
     """
 
-    """ # DELETE THIS LINE TO START WORKING ON THIS (AND THE ONE BELOW!) #
-
     # Here's some psuedocode to start you off implementing a learning
     # switch.  You'll need to rewrite it as real Python code.
 
     # Learn the port for the source MAC
-    self.mac_to_port ... <add or update entry>
+    self.mac_to_port[packet.src] = packet_in.in_port; 
 
-    if the port associated with the destination MAC of the packet is known:
+    if packet.dst in self.mac_to_port:
       # Send packet out the associated port
-      self.resend_packet(packet_in, ...)
+      #self.resend_packet(packet_in, self.mac_to_port[packet.dst])
 
       # Once you have the above working, try pushing a flow entry
       # instead of resending the packet (comment out the above and
@@ -102,21 +100,28 @@ class Tutorial (object):
       log.debug("Installing flow...")
       # Maybe the log statement should have source/destination/port?
 
-      #msg = of.ofp_flow_mod()
+      msg = of.ofp_flow_mod()
       #
       ## Set fields to match received packet
-      #msg.match = of.ofp_match.from_packet(packet)
+      msg.match = of.ofp_match.from_packet(packet)
       #
       #< Set other fields of flow_mod (timeouts? buffer_id?) >
       #
       #< Add an output action, and send -- similar to resend_packet() >
+      msg.data = packet_in
+
+      # Add an action to send to the specified port
+      action = of.ofp_action_output(port = self.mac_to_port[packet.dst])
+      msg.actions.append(action)
+
+      # Send message to switch
+      self.connection.send(msg)
 
     else:
       # Flood the packet out everything but the input port
       # This part looks familiar, right?
       self.resend_packet(packet_in, of.OFPP_ALL)
 
-    """ # DELETE THIS LINE TO START WORKING ON THIS #
 
 
   def _handle_PacketIn (self, event):
@@ -136,9 +141,9 @@ class Tutorial (object):
     print "Src: " + str(packet.src)
     print "Dest: " + str(packet.dst)
     print "Event port: " + str(event.port)
-    self.act_like_hub(packet, packet_in)
+    #self.act_like_hub(packet, packet_in)
     log.info("packet in")
-    #self.act_like_switch(packet, packet_in)
+    self.act_like_switch(packet, packet_in)
 
 
 
