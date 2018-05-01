@@ -1,6 +1,7 @@
 import os
 import sys
 import networkx as nx
+import json
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.node import CPULimitedHost
@@ -17,8 +18,11 @@ from time import sleep, time
 class JellyFishTop(Topo):
     ''' TODO, build your topology here'''
     def build(self):
-            graph = nx.random_regular_graph(2, 10)   #(d, n, seed=None)
-            graph = graph.to_directed()
+            #graph = nx.random_regular_graph(4, 10)   #(d, n, seed=None)
+            #graph = graph.to_directed()
+            with open('generated_rrg', 'r') as infile:
+                data = json.load(infile)
+            graph = nx.readwrite.node_link_graph(data)
             nodes = graph.nodes()
            
             # todo not repeating edges now, but don't double create hosts (?)
@@ -33,9 +37,9 @@ class JellyFishTop(Topo):
                 neighbors = graph.neighbors(node)
                 print("node: " + str(node))
                 for neighbor in neighbors:
+                    print("neighbor: " + str(neighbor))
                     if (neighbor < node):
                         continue
-                    print("neighbor: " + str(neighbor))
                     neighborHost = nodeToHost[neighbor]
                     
                     leftString = 's' + str(node) + 'x' + str(neighbor)
@@ -66,7 +70,7 @@ def experiment(net):
 def main():
 	topo = JellyFishTop()
 	net = Mininet(topo=topo, host=CPULimitedHost, link = TCLink, controller=JELLYPOX)
-	experiment(net)
+        experiment(net)
 
 if __name__ == "__main__":
 	main()

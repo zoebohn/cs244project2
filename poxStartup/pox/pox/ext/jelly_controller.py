@@ -21,8 +21,12 @@ learning switch.
 It's roughly similar to the one Brandon Heller did for NOX.
 """
 
+from heapq import heappush, heappop
+from itertools import count
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
+import networkx as nx
+import json
 
 log = core.getLogger()
 
@@ -45,6 +49,9 @@ class Tutorial (object):
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
 
+    with open('generated_rrg', 'r') as infile:
+        data = json.load(infile)
+    self.graph = nx.readwrite.node_link_graph(data)
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -87,11 +94,12 @@ class Tutorial (object):
     # switch.  You'll need to rewrite it as real Python code.
 
     # Learn the port for the source MAC
-    self.mac_to_port[packet.src] = packet_in.in_port; 
+    if packet.src not in self.mac_to_port:
+        self.mac_to_port[packet.src] = packet_in.in_port 
 
     if packet.dst in self.mac_to_port:
       # Send packet out the associated port
-      #self.resend_packet(packet_in, self.mac_to_port[packet.dst])
+      self.resend_packet(packet_in, self.mac_to_port[packet.dst])
 
       # Once you have the above working, try pushing a flow entry
       # instead of resending the packet (comment out the above and
@@ -100,28 +108,121 @@ class Tutorial (object):
       log.debug("Installing flow...")
       # Maybe the log statement should have source/destination/port?
 
-      msg = of.ofp_flow_mod()
+#      msg = of.ofp_flow_mod()
       #
       ## Set fields to match received packet
-      msg.match = of.ofp_match.from_packet(packet)
+#      msg.match = of.ofp_match.from_packet(packet)
       #
       #< Set other fields of flow_mod (timeouts? buffer_id?) >
       #
       #< Add an output action, and send -- similar to resend_packet() >
-      msg.data = packet_in
+#      msg.data = packet_in
 
       # Add an action to send to the specified port
-      action = of.ofp_action_output(port = self.mac_to_port[packet.dst])
-      msg.actions.append(action)
+#      action = of.ofp_action_output(port = self.mac_to_port[packet.dst])
+#      msg.actions.append(action)
 
       # Send message to switch
-      self.connection.send(msg)
+#      self.connection.send(msg)
 
     else:
       # Flood the packet out everything but the input port
       # This part looks familiar, right?
       self.resend_packet(packet_in, of.OFPP_ALL)
 
+  def k_shortest_paths(source, target, k=1, weight='weight'):
+    """Returns the k-shortest paths from source to target in a weighted graph G.
+    Parameters
+    ----------
+    source : node
+       Starting node
+    target : node
+       Ending node
+       
+    k : integer, optional (default=1)
+        The number of shortest paths to find
+    weight: string, optional (default='weight')
+       Edge data key corresponding to the edge weight
+    Returns
+    -------
+    lengths, paths : lists
+       Returns a tuple with two lists.
+       The first list stores the length of each k-shortest path.
+       The second list stores each k-shortest path.  
+    Raises
+    ------
+    NetworkXNoPath
+       If no path exists between source and target.
+    Examples
+    --------
+    >>> G=nx.complete_graph(5)    
+    >>> print(k_shortest_paths(G, 0, 4, 4))
+    ([1, 2, 2, 2], [[0, 4], [0, 1, 4], [0, 2, 4], [0, 3, 4]])
+    Notes
+    ------
+    Edge weight attributes must be numerical and non-negative.
+    Distances are calculated as sums of weighted edges traversed.
+    """
+    if source == target:
+        return ([0], [[source]]) 
+       
+    G = self.graph.copy()
+    length, path = nx.single_source_dijkstra(G, source, target, weight=weight)
+    if target not in length:
+        raise nx.NetworkXNoPath("node %s not reachable from %s" % (source, target))
+        
+    lengths = [length[target]]
+    paths = [path[target]]
+    c = count()        
+    B = []                        
+    G_original = G.copy()    
+    
+    for i in range(1, k):
+        for j in range(len(paths[-1]) - 1):            
+            spur_node = paths[-1][j]
+            root_path = paths[-1][:j + 1]
+            
+            edges_removed = []
+            for c_path in paths:
+                if len(c_path) > j and root_path == c_path[:j + 1]:
+                    u = c_path[j]
+                    v = c_path[j + 1]
+                    if G.has_edge(u, v):
+                        edge_attr = G.edge[u][v]
+                        G.remove_edge(u, v)
+                        edges_removed.append((u, v, edge_attr))
+            
+            for n in range(len(root_path) - 1):
+                node = root_path[n]
+                # out-edges
+                for u, v, edge_attr in G.edges_iter(node, data=True):
+                    G.remove_edge(u, v)
+                    edges_removed.append((u, v, edge_attr))
+                
+                if G.is_directed():
+                    # in-edges
+                    for u, v, edge_attr in G.in_edges_iter(node, data=True):
+                        G.remove_edge(u, v)
+                        edges_removed.append((u, v, edge_attr))
+            
+            spur_path_length, spur_path = nx.single_source_dijkstra(G, spur_node, target, weight=weight)            
+            if target in spur_path and spur_path[target]:
+                total_path = root_path[:-1] + spur_path[target]
+                total_path_length = get_path_length(G_original, root_path, weight) + spur_path_length[target]                
+                heappush(B, (total_path_length, next(c), total_path))
+                
+            for e in edges_removed:
+                u, v, edge_attr = e
+                G.add_edge(u, v, edge_attr)
+                       
+        if B:
+            (l, _, p) = heappop(B)        
+            lengths.append(l)
+            paths.append(p)
+        else:
+            break
+    
+    return (lengths, paths)  
 
 
   def _handle_PacketIn (self, event):
