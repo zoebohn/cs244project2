@@ -25,8 +25,9 @@ from heapq import heappush, heappop
 from itertools import count
 from pox.core import core
 from mininet.log import setLogLevel
-from pox.ext.ripl_routing import ripl
-from pox.ext.build_topology import topo
+from pox.lib.util import dpidToStr
+import pox.ext.ripl_routing as ripl
+import pox.ext.build_topology as topo
 import pox.openflow.libopenflow_01 as of
 import networkx as nx
 import json
@@ -52,12 +53,14 @@ class Tutorial (object):
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
 
+    self.switches = {}
+
     with open('generated_rrg', 'r') as infile:
         data = json.load(infile)
     self.graph = nx.readwrite.node_link_graph(data)
 
     self.t = topo.JellyFishTop()
-    self.r = ripl.STStructuredRouting(self.topo)
+    self.r = ripl.STStructuredRouting(self.t)
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -137,7 +140,7 @@ class Tutorial (object):
       self.resend_packet(packet_in, of.OFPP_ALL)
 
   def _install_proactive_flows(self):
-    t = self.topo
+    t = self.t
     # Install L2 src/dst flow for every possible pair of hosts.
     for src in sorted(self._raw_dpids(t.layer_nodes(t.LAYER_HOST))):
       for dst in sorted(self._raw_dpids(t.layer_nodes(t.LAYER_HOST))):
@@ -190,6 +193,34 @@ class Tutorial (object):
     "Convert a list of name strings (from Topo object) to numbers."
     return [self.t.id_gen(name = a).dpid for a in arr]  
 
+  def _flood(self, event):
+    packet = event.parsed
+    dpid = event.dpid
+    #log.info("PacketIn: %s" % packet)
+    in_port = event.port
+    t = self.t
+
+    # Broadcast to every output port except the input on the input switch.
+    # Hub behavior, baby!
+    for sw in self._raw_dpids(t.layer_nodes(t.LAYER_EDGE)):
+      #log.info("considering sw %s" % sw)
+      ports = []
+      sw_name = t.id_gen(dpid = sw).name_str()
+      for host in t.down_nodes(sw_name):
+        sw_port, host_port = t.port(sw_name, host)
+        if sw != dpid or (sw == dpid and in_port != sw_port):
+          ports.append(sw_port)
+      # Send packet out each non-input host port
+      # TODO: send one packet only.
+      for port in ports:
+        #log.info("sending to port %s on switch %s" % (port, sw))
+        #buffer_id = event.ofp.buffer_id
+        #if sw == dpid:
+        #  self.switches[sw].send_packet_bufid(port, event.ofp.buffer_id)
+        #else:
+        self.switches[sw].send_packet_data(port, event.data)
+        #  buffer_id = -1 
+
   def _handle_packet_proactive(self, event):
     packet = event.parse()
 
@@ -225,6 +256,28 @@ class Tutorial (object):
     #self.act_like_switch(packet, packet_in)
     self._handle_packet_proactive(event)
 
+  def _handle_ConnectionUp(self, event):
+    sw = self.switches.get(event.dpid)
+    sw_str = dpidToStr(event.dpid)
+    log.info("Saw switch come up: %s", sw_str)
+    name_str = self.t.id_gen(dpid = event.dpid).name_str()
+    if name_str not in self.t.switches():
+      log.warn("Ignoring unknown switch %s" % sw_str)
+      return
+    if sw is None:
+      log.info("Added fresh switch %s" % sw_str)
+      sw = Switch()
+      self.switches[event.dpid] = sw
+      sw.connect(event.connection)
+    else:
+      log.info("Odd - already saw switch %s come up" % sw_str)
+      sw.connect(event.connection)
+    sw.connection.send(of.ofp_set_config(miss_send_len=MISS_SEND_LEN))
+
+    if len(self.switches) == len(self.t.switches()):
+      log.info("Woo!  All switches up")
+      self.all_switches_up = True
+      self._install_proactive_flows()
 
 def launch ():
   """
@@ -234,5 +287,4 @@ def launch ():
   def start_switch (event):
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
-  self._install_proactive_flows()
   core.openflow.addListenerByName("ConnectionUp", start_switch)

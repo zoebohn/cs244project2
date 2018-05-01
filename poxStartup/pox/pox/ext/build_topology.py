@@ -20,6 +20,7 @@ class JellyFishTop(Topo):
     ''' TODO, build your topology here'''
     def __init__(self):
             Topo.__init__(self)
+            self.id_gen = JellyFishId
             #graph = nx.random_regular_graph(4, 10)   #(d, n, seed=None)
             #graph = graph.to_directed()
             with open('generated_rrg', 'r') as infile:
@@ -62,6 +63,92 @@ class JellyFishTop(Topo):
             #self.addLink( leftHost, leftSwitch )
             #self.addLink( leftSwitch, rightSwitch )
             #self.addLink( rightSwitch, rightHost )
+
+    def layer_nodes(self, layer):
+        '''Return nodes at a provided layer.
+        @param layer layer
+        @return names list of names
+        '''
+        def is_layer(n):
+            '''Returns true if node is at layer.'''
+            return self.layer(n) == layer
+
+        nodes = [n for n in self.g.nodes() if is_layer(n)]
+        return nodes
+
+class NodeID(object):
+    '''Topo node identifier.'''
+
+    def __init__(self, dpid = None):
+        '''Init.
+        @param dpid dpid
+        '''
+        # DPID-compatible hashable identifier: opaque 64-bit unsigned int
+        self.dpid = dpid
+
+    def __str__(self):
+        '''String conversion.
+        @return str dpid as string
+        '''
+        return str(self.dpid)
+
+    def name_str(self):
+        '''Name conversion.
+        @return name name as string
+        '''
+        return str(self.dpid)
+
+    def ip_str(self):
+        '''Name conversion.
+        @return ip ip as string
+        '''
+        hi = (self.dpid & 0xff0000) >> 16
+        mid = (self.dpid & 0xff00) >> 8
+        lo = self.dpid & 0xff
+        return "10.%i.%i.%i" % (hi, mid, lo)
+ 
+
+class JellyFishId(NodeID):
+    def __init__(self, pod = 0, sw = 0, host = 0, dpid = None, name = None):
+        '''Create FatTreeNodeID object from custom params.
+        Either (pod, sw, host) or dpid must be passed in.
+        @param pod pod ID
+        @param sw switch ID
+        @param host host ID
+        @param dpid optional dpid
+        @param name optional name
+        '''
+        if dpid:
+            self.pod = (dpid & 0xff0000) >> 16
+            self.sw = (dpid & 0xff00) >> 8
+            self.host = (dpid & 0xff)
+            self.dpid = dpid
+        elif name:
+            pod, sw, host = [int(s) for s in name.split('_')]
+            self.pod = pod
+            self.sw = sw
+            self.host = host
+            self.dpid = (pod << 16) + (sw << 8) + host
+        else:
+            self.pod = pod
+            self.sw = sw
+            self.host = host
+            self.dpid = (pod << 16) + (sw << 8) + host
+
+    def __str__(self):
+        return "(%i, %i, %i)" % (self.pod, self.sw, self.host)
+
+    def name_str(self):
+        '''Return name string'''
+        return "%i_%i_%i" % (self.pod, self.sw, self.host)
+
+    def mac_str(self):
+        '''Return MAC string'''
+        return "00:00:00:%02x:%02x:%02x" % (self.pod, self.sw, self.host)
+
+    def ip_str(self):
+        '''Return IP string'''
+        return "10.%i.%i.%i" % (self.pod, self.sw, self.host)  
 
 """
 def experiment(net):
