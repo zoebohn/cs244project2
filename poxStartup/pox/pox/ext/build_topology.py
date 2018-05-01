@@ -10,14 +10,16 @@ from mininet.node import OVSController
 from mininet.node import Controller
 from mininet.node import RemoteController
 from mininet.cli import CLI
+from mininet.log import setLogLevel
 sys.path.append("../../")
 from pox.ext.jelly_pox import JELLYPOX
 from subprocess import Popen
-from time import sleep, time
+#from time import sleep, time
 
 class JellyFishTop(Topo):
     ''' TODO, build your topology here'''
-    def build(self):
+    def __init__(self):
+            Topo.__init__(self)
             #graph = nx.random_regular_graph(4, 10)   #(d, n, seed=None)
             #graph = graph.to_directed()
             with open('generated_rrg', 'r') as infile:
@@ -61,6 +63,7 @@ class JellyFishTop(Topo):
             #self.addLink( leftSwitch, rightSwitch )
             #self.addLink( rightSwitch, rightHost )
 
+"""
 def experiment(net):
         net.start()
         sleep(3)
@@ -70,8 +73,11 @@ def experiment(net):
 def main():
 	topo = JellyFishTop()
 	net = Mininet(topo=topo, host=CPULimitedHost, link = TCLink, controller=JELLYPOX)
+        setLogLevel('info')
         experiment(net)
+"""
+topos = {'jellyfish': JellyFishTop}
 
-if __name__ == "__main__":
-	main()
+#if __name__ == "__main__":
+#	main()
 

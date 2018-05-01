@@ -24,12 +24,15 @@ It's roughly similar to the one Brandon Heller did for NOX.
 from heapq import heappush, heappop
 from itertools import count
 from pox.core import core
+from mininet.log import setLogLevel
+from pox.ext.ripl_routing import ripl
+from pox.ext.build_topology import topo
 import pox.openflow.libopenflow_01 as of
 import networkx as nx
 import json
 
 log = core.getLogger()
-
+#setLogLevel('info')
 
 
 class Tutorial (object):
@@ -52,6 +55,9 @@ class Tutorial (object):
     with open('generated_rrg', 'r') as infile:
         data = json.load(infile)
     self.graph = nx.readwrite.node_link_graph(data)
+
+    self.t = topo.JellyFishTop()
+    self.r = ripl.STStructuredRouting(self.topo)
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -130,100 +136,72 @@ class Tutorial (object):
       # This part looks familiar, right?
       self.resend_packet(packet_in, of.OFPP_ALL)
 
-  def k_shortest_paths(source, target, k=1, weight='weight'):
-    """Returns the k-shortest paths from source to target in a weighted graph G.
-    Parameters
-    ----------
-    source : node
-       Starting node
-    target : node
-       Ending node
-       
-    k : integer, optional (default=1)
-        The number of shortest paths to find
-    weight: string, optional (default='weight')
-       Edge data key corresponding to the edge weight
-    Returns
-    -------
-    lengths, paths : lists
-       Returns a tuple with two lists.
-       The first list stores the length of each k-shortest path.
-       The second list stores each k-shortest path.  
-    Raises
-    ------
-    NetworkXNoPath
-       If no path exists between source and target.
-    Examples
-    --------
-    >>> G=nx.complete_graph(5)    
-    >>> print(k_shortest_paths(G, 0, 4, 4))
-    ([1, 2, 2, 2], [[0, 4], [0, 1, 4], [0, 2, 4], [0, 3, 4]])
-    Notes
-    ------
-    Edge weight attributes must be numerical and non-negative.
-    Distances are calculated as sums of weighted edges traversed.
-    """
-    if source == target:
-        return ([0], [[source]]) 
-       
-    G = self.graph.copy()
-    length, path = nx.single_source_dijkstra(G, source, target, weight=weight)
-    if target not in length:
-        raise nx.NetworkXNoPath("node %s not reachable from %s" % (source, target))
-        
-    lengths = [length[target]]
-    paths = [path[target]]
-    c = count()        
-    B = []                        
-    G_original = G.copy()    
-    
-    for i in range(1, k):
-        for j in range(len(paths[-1]) - 1):            
-            spur_node = paths[-1][j]
-            root_path = paths[-1][:j + 1]
-            
-            edges_removed = []
-            for c_path in paths:
-                if len(c_path) > j and root_path == c_path[:j + 1]:
-                    u = c_path[j]
-                    v = c_path[j + 1]
-                    if G.has_edge(u, v):
-                        edge_attr = G.edge[u][v]
-                        G.remove_edge(u, v)
-                        edges_removed.append((u, v, edge_attr))
-            
-            for n in range(len(root_path) - 1):
-                node = root_path[n]
-                # out-edges
-                for u, v, edge_attr in G.edges_iter(node, data=True):
-                    G.remove_edge(u, v)
-                    edges_removed.append((u, v, edge_attr))
-                
-                if G.is_directed():
-                    # in-edges
-                    for u, v, edge_attr in G.in_edges_iter(node, data=True):
-                        G.remove_edge(u, v)
-                        edges_removed.append((u, v, edge_attr))
-            
-            spur_path_length, spur_path = nx.single_source_dijkstra(G, spur_node, target, weight=weight)            
-            if target in spur_path and spur_path[target]:
-                total_path = root_path[:-1] + spur_path[target]
-                total_path_length = get_path_length(G_original, root_path, weight) + spur_path_length[target]                
-                heappush(B, (total_path_length, next(c), total_path))
-                
-            for e in edges_removed:
-                u, v, edge_attr = e
-                G.add_edge(u, v, edge_attr)
-                       
-        if B:
-            (l, _, p) = heappop(B)        
-            lengths.append(l)
-            paths.append(p)
-        else:
-            break
-    
-    return (lengths, paths)  
+  def _install_proactive_flows(self):
+    t = self.topo
+    # Install L2 src/dst flow for every possible pair of hosts.
+    for src in sorted(self._raw_dpids(t.layer_nodes(t.LAYER_HOST))):
+      for dst in sorted(self._raw_dpids(t.layer_nodes(t.LAYER_HOST))):
+        self._install_proactive_path(src, dst)
 
+  def _install_proactive_path(self, src, dst):
+    """Install entries on route between two hosts based on MAC addrs.
+    
+    src and dst are unsigned ints.
+    """
+    src_sw = self.t.up_nodes(self.t.id_gen(dpid = src).name_str())
+    assert len(src_sw) == 1
+    src_sw_name = src_sw[0]
+    dst_sw = self.t.up_nodes(self.t.id_gen(dpid = dst).name_str())
+    assert len(dst_sw) == 1
+    dst_sw_name = dst_sw[0]
+    hash_ = self._src_dst_hash(src, dst)
+    route = self.r.get_route(src_sw_name, dst_sw_name, hash_)
+    log.info("route: %s" % route)
+
+    # Form OF match
+    match = of.ofp_match()
+    match.dl_src = EthAddr(src).toRaw()
+    match.dl_dst = EthAddr(dst).toRaw()
+
+    dst_host_name = self.t.id_gen(dpid = dst).name_str()
+    final_out_port, ignore = self.t.port(route[-1], dst_host_name)
+    for i, node in enumerate(route):
+      node_dpid = self.t.id_gen(name = node).dpid
+      if i < len(route) - 1:
+        next_node = route[i + 1]
+        out_port, next_in_port = self.t.port(node, next_node)
+      else:
+        out_port = final_out_port
+      self.switches[node_dpid].install(out_port, match)
+
+
+  def install(self, port, match, buf = -1, idle_timeout = 0, hard_timeout = 0,
+              priority = of.OFP_DEFAULT_PRIORITY):
+    msg = of.ofp_flow_mod()
+    msg.match = match
+    msg.idle_timeout = idle_timeout
+    msg.hard_timeout = hard_timeout
+    msg.priority = priority
+    msg.actions.append(of.ofp_action_output(port = port))
+    msg.buffer_id = buf
+    self.connection.send(msg)
+
+  def _raw_dpids(self, arr):
+    "Convert a list of name strings (from Topo object) to numbers."
+    return [self.t.id_gen(name = a).dpid for a in arr]  
+
+  def _handle_packet_proactive(self, event):
+    packet = event.parse()
+
+    if packet.dst.isMulticast():
+      self._flood(event)
+    else:
+      hosts = self._raw_dpids(self.t.layer_nodes(self.t.LAYER_HOST))
+      if packet.src.toInt() not in hosts:
+        raise Exception("unrecognized src: %s" % packet.src)
+      if packet.dst.toInt() not in hosts:
+        raise Exception("unrecognized dst: %s" % packet.dst)
+      raise Exception("known host MACs but entries weren't pushed down?!?")
 
   def _handle_PacketIn (self, event):
     """
@@ -244,15 +222,17 @@ class Tutorial (object):
     print "Event port: " + str(event.port)
     #self.act_like_hub(packet, packet_in)
     log.info("packet in")
-    self.act_like_switch(packet, packet_in)
-
+    #self.act_like_switch(packet, packet_in)
+    self._handle_packet_proactive(event)
 
 
 def launch ():
   """
   Starts the component
   """
+  #setLogLevel('info')
   def start_switch (event):
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
+  self._install_proactive_flows()
   core.openflow.addListenerByName("ConnectionUp", start_switch)
