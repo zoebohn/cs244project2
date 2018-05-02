@@ -2,7 +2,7 @@ import networkx as nx
 import json
 
 def main():
-    graph = nx.random_regular_graph(4, 10)
+    graph = nx.random_regular_graph(4, 686)
     graph = graph.to_directed()
     data = nx.readwrite.node_link_data(graph)
     with open('generated_rrg', 'w') as outfile:
