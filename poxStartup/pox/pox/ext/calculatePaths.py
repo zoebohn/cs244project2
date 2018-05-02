@@ -1,6 +1,7 @@
 import networkx as nx
 import json
 import operator
+from itertools import islice
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,8 +16,8 @@ def main():
     ecmp_plot = plt.step(x, y, label="8-way ECMP")
     x, y = generate_data(graph, True, False)
     ecmp64_plot = plt.step(x, y, label="64-way ECMP")
-    #x, y = generate_data(graph, False, False)
-    #kshortest_plot = plt.step(x, y, label="8 Shortest Paths")
+    x, y = generate_data(graph, False, False)
+    kshortest_plot = plt.step(x, y, label="8 Shortest Paths")
     plt.legend()
     plt.xlabel("Rank of Link")
     plt.ylabel("# Distinct Paths Link is On")
@@ -28,7 +29,6 @@ def generate_data(graph, ecmp, ecmp_8):
     link_count = {}
     for edge in graph.edges():
         link_count[edge] = 0
-    print len(link_count)
 
     for node_i in graph.nodes():
         #print "working on node: " + str(node_i)
@@ -43,8 +43,7 @@ def generate_data(graph, ecmp, ecmp_8):
             else:
                 shortest_paths = shortest_paths[:64]
         else:
-            shortest_paths = [p for p in nx.shortest_simple_paths(graph, node_i, node_j)]
-            shortest_paths = shortest_paths[:8]
+            shortest_paths = list(islice(nx.shortest_simple_paths(graph, node_i, node_j), 7))
         
         for path in shortest_paths:
             i = 0
@@ -69,7 +68,6 @@ def generate_data(graph, ecmp, ecmp_8):
         links_so_far += rank_to_count[i]
         x.append(end_range)
         y.append(i)
-        print str(end_range) + "," + str(i);
     return x, y
 """
 def YenKSP(graph, source, target, K):
