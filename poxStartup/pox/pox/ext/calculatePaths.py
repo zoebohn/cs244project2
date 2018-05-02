@@ -1,26 +1,37 @@
 import networkx as nx
 import json
 import operator
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 def main():
     data = None
     with open('generated_rrg', 'r') as infile:
         data = json.load(infile)
     graph = nx.readwrite.node_link_graph(data)
-    ECMP(graph)
+    x, y = generate_data(graph, True, True)
+    ecmp_plot = plt.step(x, y, label="8-way ECMP")
+    x, y = generate_data(graph, True, False)
+    ecmp64_plot = plt.step(x, y, label="64-way ECMP")
+    #x, y = generate_data(graph, False, False)
+    #kshortest_plot = plt.step(x, y, label="8 Shortest Paths")
+    plt.legend()
+    plt.xlabel("Rank of Link")
+    plt.ylabel("# Distinct Paths Link is On")
+    plt.savefig('Figure9.png')
 
-def ECMP(graph):
-    ECMP = False#True
-    ECMP_8 = False#True
+def generate_data(graph, ecmp, ecmp_8):
+    ECMP = ecmp
+    ECMP_8 = ecmp_8
     link_count = {}
-    for node_i in graph.nodes():
-        for node_j in graph.nodes():
-            if node_i >= node_j:
-                continue
-            edge = (node_i, node_j)
-            link_count[edge] = 0
+    for edge in graph.edges():
+        link_count[edge] = 0
+    print len(link_count)
 
     for node_i in graph.nodes():
+        #print "working on node: " + str(node_i)
         node_j = node_i + 1
         if (node_j == len(graph.nodes())):
             node_j = 1
@@ -43,23 +54,23 @@ def ECMP(graph):
                 i += 1
 
     highest_count = max(link_count.items(), key=operator.itemgetter(1))[1]
-    print highest_count
     rank_to_count = [0] * (highest_count + 1) 
     for key in link_count:
         count = link_count[key]
-        for i in range(0, count + 1):
-            print i
-            print count + 1
+        for i in range(count, len(rank_to_count)):
             rank_to_count[i] += 1
 
+    x = []
+    y = []
     links_so_far = 0;
     for i in range(0, len(rank_to_count)):
         start_range = links_so_far
-        end_range = rank_to_count[i] + links_so_far
+        end_range = rank_to_count[i]# + links_so_far
         links_so_far += rank_to_count[i]
-        print str(end_range) + "," str(i);
-        
-
+        x.append(end_range)
+        y.append(i)
+        print str(end_range) + "," + str(i);
+    return x, y
 """
 def YenKSP(graph, source, target, K):
     l, shortest_path = nx.single_source_dijkstra(graph, source, target)
