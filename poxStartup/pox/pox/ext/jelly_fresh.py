@@ -1,9 +1,11 @@
 from pox.core import core
+from collections import defaultdict
 import pox.openflow.libopenflow_01 as of
 
 log = core.getLogger()
 
-
+# [src][dst][curr-sw] -> port 
+path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
 
 class Tutorial (object):
   """
@@ -15,13 +17,10 @@ class Tutorial (object):
     # send it messages!
     self.connection = connection
 
+    self.dpid = connection.dpid
+
     # This binds our PacketIn event listener
     connection.addListeners(self)
-
-    # Use this table to keep track of which ethernet address is on
-    # which switch port (keys are MACs, values are ports).
-    self.mac_to_port = {}
-
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -39,22 +38,6 @@ class Tutorial (object):
     # Send message to switch
     self.connection.send(msg)
 
-
-  def act_like_hub (self, packet, packet_in):
-    """
-    Implement hub-like behavior -- send all packets to all ports besides
-    the input port.
-    """
-    # We want to output to all ports -- we do that using the special
-    # OFPP_ALL port as the output port.  (We could have also used
-    # OFPP_FLOOD.)
-    self.resend_packet(packet_in, of.OFPP_ALL)
-
-    # Note that if we didn't get a valid buffer_id, a slightly better
-    # implementation would check that we got the full data before
-    # sending it (len(packet_in.data) should be == packet_in.total_len)).
-
-
   def act_like_switch (self, packet, packet_in):
     """
     Implement switch-like behavior.
@@ -62,38 +45,18 @@ class Tutorial (object):
     # Here's some psuedocode to start you off implementing a learning
     # switch.  You'll need to rewrite it as real Python code.
     # Learn the port for the source MAC
+    log.debug("packet is %s", packet)
+    ipv6 = packet.find('ipv6')
+    if ipv6 is not None:
+        log.debug("IPv6: %s", ipv6)
     ipp = packet.find('ipv4')
+    arp = packet.find('arp')
     if ipp is not None:
-	print ipp.dstip
-    
-    if packet.src not in self.mac_to_port:
-        print "Learning that " + str(packet.src) + " is attached at port " + str(packet_in.in_port)
-        self.mac_to_port[packet.src] = packet_in.in_port
- 
-    #if the port associated with the destination MAC of the packet is known:
-    if packet.dst in self.mac_to_port:
-      # Send packet out the associated port
-      print str(packet.dst) + " destination known. only send message to it"
-      self.resend_packet(packet_in, self.mac_to_port[packet.dst])
-      # Once you have the above working, try pushing a flow entry
-      # instead of resending the packet (comment out the above and
-      # uncomment and complete the below.)
-      log.debug("Installing flow...")
-      # Maybe the log statement should have source/destination/port?
-      #msg = of.ofp_flow_mod()
-      #
-      ## Set fields to match received packet
-      #msg.match = of.ofp_match.from_packet(packet)
-      #
-      #< Set other fields of flow_mod (timeouts? buffer_id?) >
-      #
-      #< Add an output action, and send -- similar to resend_packet() >
+        log.debug("Got packet from %s to %s at switch %d", ipp.srcip, ipp.dstip, self.dpid)
+        log.debug("port to send to: %d", path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid])
+        self.resend_packet(packet_in, path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid])
     else:
-      # Flood the packet out everything but the input port
-      # This part looks familiar, right?
-      print str(packet.dst) + " not known, resend to everybody"
-      self.resend_packet(packet_in, of.OFPP_ALL)
-
+        log.warning("ERROR: packet is not IP. Dropping")
 
   def _handle_PacketIn (self, event):
     """
@@ -116,7 +79,62 @@ class Tutorial (object):
     #log.info("packet in")
     self.act_like_switch(packet, packet_in)
 
+def write_paths_wrapper():
+  hosts = ['10.0.0.1','10.0.0.2','10.0.0.3','10.0.0.4']
+  paths = defaultdict(lambda:defaultdict(lambda:[]))
+  link_to_port = defaultdict(lambda:defaultdict(lambda:None))
+  ip_to_dpid = defaultdict(lambda:None)
 
+  paths['10.0.0.1']['10.0.0.2'] = ['10.1.0.0', '10.0.0.2']
+  paths['10.0.0.1']['10.0.0.3'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']
+  paths['10.0.0.1']['10.0.0.4'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']
+  
+  paths['10.0.0.2']['10.0.0.1'] = ['10.1.0.0', '10.0.0.1']
+  paths['10.0.0.2']['10.0.0.3'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']
+  paths['10.0.0.2']['10.0.0.4'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']
+  
+  paths['10.0.0.3']['10.0.0.1'] = ['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.1']
+  paths['10.0.0.3']['10.0.0.2'] = ['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.2']
+  paths['10.0.0.3']['10.0.0.4'] = ['10.3.0.0', '10.0.0.4']
+  
+  paths['10.0.0.4']['10.0.0.1'] = ['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.1']
+  paths['10.0.0.4']['10.0.0.2'] = ['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.2']
+  paths['10.0.0.4']['10.0.0.3'] = ['10.3.0.0', '10.0.0.3']
+
+  link_to_port['10.1.0.0']['10.2.0.0'] = 1
+  link_to_port['10.2.0.0']['10.1.0.0'] = 2
+  link_to_port['10.2.0.0']['10.3.0.0'] = 3
+  link_to_port['10.3.0.0']['10.2.0.0'] = 4
+  link_to_port['10.0.0.1']['10.1.0.0'] = 9
+  link_to_port['10.1.0.0']['10.0.0.1'] = 10
+  link_to_port['10.0.0.2']['10.1.0.0'] = 11
+  link_to_port['10.1.0.0']['10.0.0.2'] = 12
+  link_to_port['10.0.0.3']['10.3.0.0'] = 13
+  link_to_port['10.3.0.0']['10.0.0.3'] = 14
+  link_to_port['10.0.0.4']['10.3.0.0'] = 15
+  link_to_port['10.3.0.0']['10.0.0.4'] = 16
+
+  ip_to_dpid['10.1.0.0'] = 1
+  ip_to_dpid['10.2.0.0'] = 2
+  ip_to_dpid['10.3.0.0'] = 3
+  ip_to_dpid['10.4.0.0'] = 4
+
+  write_paths(hosts, paths, link_to_port, ip_to_dpid)
+
+def write_paths(hosts, paths, link_to_port, ip_to_dpid):
+  # hosts is list of all host IPs
+  # paths is [srcip][dstip] -> switch dpids
+  # link_to_port is [sw1-dpid][sw2-dpid] -> port
+  for src in hosts:
+    for dst in hosts:
+      path = paths[src][dst]
+      sw1 = None
+      for sw2 in path:
+        if sw1 is not None:
+          port = link_to_port[sw1][sw2]
+          path_map[src][dst][ip_to_dpid[sw1]] = port
+          log.debug("pathmap[%s][%s][%d] = %d", src, dst, ip_to_dpid[sw1], port)
+        sw1 = sw2
 
 def launch ():
   """
@@ -125,4 +143,7 @@ def launch ():
   def start_switch (event):
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
+  write_paths_wrapper()
+  from proto.arp_responder import launch as arp_launch
+  arp_launch(eat_packets=False)
   core.openflow.addListenerByName("ConnectionUp", start_switch)
