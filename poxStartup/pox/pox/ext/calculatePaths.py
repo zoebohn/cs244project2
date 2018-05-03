@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 def main():
     data = None
-    with open('figure9_rrg', 'r') as infile:
+    with open('generated_rrg', 'r') as infile:
         data = json.load(infile)
     graph = nx.readwrite.node_link_graph(data)
     x, y = generate_data(graph, True, True)
@@ -79,3 +79,5 @@ def generate_data(graph, ecmp, ecmp_8):
         x.append(end_range)
         y.append(i)
     return x, y
+
+main()
