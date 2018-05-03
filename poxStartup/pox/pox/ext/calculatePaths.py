@@ -44,10 +44,11 @@ def generate_data(graph, ecmp, ecmp_8):
     for edge in graph.edges():
         link_count[edge] = 0
 
-    for node_i in graph.nodes():
+    for i in range(0, len(graph.nodes())):
+        node_i = i
         node_j = node_i + 1
         if (node_j == len(graph.nodes())):
-            node_j = 1
+            node_j = 0 
         #ECMP 8
         if (ECMP):
             if (ECMP_8):

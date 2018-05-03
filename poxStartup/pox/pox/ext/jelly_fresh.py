@@ -85,6 +85,7 @@ def write_paths_wrapper():
   link_to_port = defaultdict(lambda:defaultdict(lambda:None))
   ip_to_dpid = defaultdict(lambda:None)
 
+  # src dst - [[path 1] [path2]]; path 1: [first hop....dst]
   paths['10.0.0.1']['10.0.0.2'] = ['10.1.0.0', '10.0.0.2']
   paths['10.0.0.1']['10.0.0.3'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']
   paths['10.0.0.1']['10.0.0.4'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']
