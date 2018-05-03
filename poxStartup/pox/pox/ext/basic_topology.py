@@ -37,9 +37,13 @@ def aggNet():
 	s1 = net.addSwitch( 's1', ip='10.1.0.1')
 	s2 = net.addSwitch( 's2', ip='10.2.0.1')
 	s3 = net.addSwitch( 's3', ip='10.3.0.1')
+        s4 = net.addSwitch( 's4', ip ='10.2.1.1')
 
-	net.addLink( s1, s2 )
+        net.addLink( s1, s2 , port1=5, port2=6, addr1='0e:0e:0e:0e:0e:01', addr2='0e:0e:0e:0e:0e:02')
 	net.addLink( s2, s3 )
+
+        net.addLink( h2, s4 )
+        net.addLink( h4, s4 )
 
 	net.addLink( h1, s1 )
 	net.addLink( h2, s1 )
