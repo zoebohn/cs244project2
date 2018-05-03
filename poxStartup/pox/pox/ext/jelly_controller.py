@@ -142,8 +142,8 @@ class Tutorial (object):
   def _install_proactive_flows(self):
     t = self.t
     # Install L2 src/dst flow for every possible pair of hosts.
-    for src in sorted(self._raw_dpids(t.layer_nodes(t.LAYER_HOST))):
-      for dst in sorted(self._raw_dpids(t.layer_nodes(t.LAYER_HOST))):
+    for src in sorted(self._raw_dpids(t.g.nodes())):
+      for dst in sorted(self._raw_dpids(t.g.nodes())):
         self._install_proactive_path(src, dst)
 
   def _install_proactive_path(self, src, dst):
@@ -202,7 +202,7 @@ class Tutorial (object):
 
     # Broadcast to every output port except the input on the input switch.
     # Hub behavior, baby!
-    for sw in self._raw_dpids(t.layer_nodes(t.LAYER_EDGE)):
+    for sw in self._raw_dpids(t.g.nodes()):
       #log.info("considering sw %s" % sw)
       ports = []
       sw_name = t.id_gen(dpid = sw).name_str()
@@ -227,10 +227,10 @@ class Tutorial (object):
     if packet.dst.isMulticast():
       self._flood(event)
     else:
-      hosts = self._raw_dpids(self.t.layer_nodes(self.t.LAYER_HOST))
-      if packet.src.toInt() not in hosts:
+      dpids = self._raw_dpids(self.t.g.nodes())
+      if packet.src.toInt() not in dpids:
         raise Exception("unrecognized src: %s" % packet.src)
-      if packet.dst.toInt() not in hosts:
+      if packet.dst.toInt() not in dpids:
         raise Exception("unrecognized dst: %s" % packet.dst)
       raise Exception("known host MACs but entries weren't pushed down?!?")
 
