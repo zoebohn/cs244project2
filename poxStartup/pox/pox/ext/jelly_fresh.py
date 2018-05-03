@@ -1,11 +1,16 @@
 from pox.core import core
 from collections import defaultdict
 import pox.openflow.libopenflow_01 as of
+from pox.lib.packet.ethernet import ethernet
+from pox.lib.packet.arp import arp
 
 log = core.getLogger()
 
 # [src][dst][curr-sw] -> port 
 path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
+
+# [ip addr] -> mac addr
+arp_table = defaultdict(lambda:None)
 
 class Tutorial (object):
   """
@@ -46,15 +51,32 @@ class Tutorial (object):
     # switch.  You'll need to rewrite it as real Python code.
     # Learn the port for the source MAC
     log.debug("packet is %s", packet)
-    ipv6 = packet.find('ipv6')
-    if ipv6 is not None:
-        log.debug("IPv6: %s", ipv6)
     ipp = packet.find('ipv4')
-    arp = packet.find('arp')
+    a = packet.find('arp')
     if ipp is not None:
         log.debug("Got packet from %s to %s at switch %d", ipp.srcip, ipp.dstip, self.dpid)
         log.debug("port to send to: %d", path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid])
         self.resend_packet(packet_in, path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid])
+    elif a is not None:
+        if packet.payload.opcode == arp.REQUEST:
+            log.debug("protodst is %s", a.protodst)
+            arp_reply = arp()
+            arp_reply.hwtype = a.hwtype
+            arp_reply.prototype = a.prototype
+            arp_reply.hwlen = a.hwlen
+            arp_reply.protolen = a.protolen
+            arp_reply.opcode = arp.REPLY
+            arp_reply.hwdst = a.hwsrc
+            arp_reply.protodst = a.protosrc
+            arp_reply.protosrc = a.protodst
+            arp_reply.hwsrc = arp_table[a.protodst]
+            e = ethernet()
+            e.type = ethernet.ARP_TYPE
+            e.dst = packet.src
+            e.src = arp_table[a.protodst]
+            e.payload = arp_reply
+            self.resend_packet(e.pack(), of.OFPP_IN_PORT)
+
     else:
         log.warning("ERROR: packet is not IP. Dropping")
 
@@ -145,6 +167,6 @@ def launch ():
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
   write_paths_wrapper()
-  from proto.arp_responder import launch as arp_launch
-  arp_launch(eat_packets=False)
+  #from proto.arp_responder import launch as arp_launch
+  #arp_launch(eat_packets=False)
   core.openflow.addListenerByName("ConnectionUp", start_switch)
