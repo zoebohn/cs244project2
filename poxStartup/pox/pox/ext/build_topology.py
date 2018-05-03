@@ -64,17 +64,6 @@ class JellyFishTop(Topo):
             #self.addLink( leftSwitch, rightSwitch )
             #self.addLink( rightSwitch, rightHost )
 
-    def layer_nodes(self, layer):
-        '''Return nodes at a provided layer.
-        @param layer layer
-        @return names list of names
-        '''
-        def is_layer(n):
-            '''Returns true if node is at layer.'''
-            return self.layer(n) == layer
-
-        nodes = [n for n in self.g.nodes() if is_layer(n)]
-        return nodes
 
 class NodeID(object):
     '''Topo node identifier.'''
@@ -119,36 +108,25 @@ class JellyFishId(NodeID):
         @param name optional name
         '''
         if dpid:
-            self.pod = (dpid & 0xff0000) >> 16
             self.sw = (dpid & 0xff00) >> 8
             self.host = (dpid & 0xff)
             self.dpid = dpid
         elif name:
-            pod, sw, host = [int(s) for s in name.split('_')]
-            self.pod = pod
+            sw, host = [int(s) for s in name.split('_')]
             self.sw = sw
             self.host = host
-            self.dpid = (pod << 16) + (sw << 8) + host
+            self.dpid = (sw << 8) + host
         else:
-            self.pod = pod
-            self.sw = sw
             self.host = host
-            self.dpid = (pod << 16) + (sw << 8) + host
+            self.sw = sw
+            self.dpid = (sw << 8) + host
 
     def __str__(self):
-        return "(%i, %i, %i)" % (self.pod, self.sw, self.host)
+        return "(%i, %i)" % (self.host, self.sw)
 
     def name_str(self):
         '''Return name string'''
-        return "%i_%i_%i" % (self.pod, self.sw, self.host)
-
-    def mac_str(self):
-        '''Return MAC string'''
-        return "00:00:00:%02x:%02x:%02x" % (self.pod, self.sw, self.host)
-
-    def ip_str(self):
-        '''Return IP string'''
-        return "10.%i.%i.%i" % (self.pod, self.sw, self.host)  
+        return "%i_%i" % (self.host, self.sw)
 
 """
 def experiment(net):

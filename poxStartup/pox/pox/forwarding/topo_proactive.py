@@ -472,7 +472,8 @@ class topo_addressing (object):
 
 
 
-def launch (debug = False):
+def launch (debug = True):
+  log.debug("helllooooooo")
   core.registerNew(topo_addressing)
   from proto.arp_helper import launch
   launch(eat_packets=False)
