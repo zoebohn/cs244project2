@@ -51,7 +51,7 @@ switches_by_dpid = {}
 switches_by_id = {}
 
 # [sw1][sw2] -> (distance, intermediate)
-path_map = defaultdict(lambda:defaultdict(lambda:(None,None)))
+path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:(None,None))))
 
 
 def dpid_to_mac (dpid):
@@ -66,38 +66,41 @@ def _calc_paths ():
   def dump ():
     for i in sws:
       for j in sws:
-        a = path_map[i][j][0]
-        #a = adjacency[i][j]
-        if a is None: a = "*"
-        print a,
-      print
+        for dpid in sws:
+          a = path_map[i][j][dpid][0]
+          #a = adjacency[i][j]
+          if a is None: a = "*"
+          print a,
+        print
 
   sws = switches_by_dpid.values()
   path_map.clear()
   for k in sws:
-    for j,port in adjacency[k].iteritems():
-      if port is None: continue
-      path_map[k][j] = (1,None)
-    path_map[k][k] = (0,None) # distance, intermediate
+    for dpid in sws:
+      for j,port in adjacency[k].iteritems():
+        if port is None: continue
+        path_map[k][j][dpid] = (1,None)
+      path_map[k][k][dpid] = (0,None) # distance, intermediate
 
   #dump()
 
   for k in sws:
     for i in sws:
       for j in sws:
-        if path_map[i][k][0] is not None:
-          if path_map[k][j][0] is not None:
-            # i -> k -> j exists
-            ikj_dist = path_map[i][k][0]+path_map[k][j][0]
-            if path_map[i][j][0] is None or ikj_dist < path_map[i][j][0]:
-              # i -> k -> j is better than existing
-              path_map[i][j] = (ikj_dist, k)
+        for dpid in sws:
+          if path_map[i][k][dpid][0] is not None:
+            if path_map[k][j][dpid][0] is not None:
+              # i -> k -> j exists
+              ikj_dist = path_map[i][k][dpid][0]+path_map[k][j][dpid][0]
+              if path_map[i][j][dpid][0] is None or ikj_dist < path_map[i][j][dpid][0]:
+                # i -> k -> j is better than existing
+                path_map[i][j][dpid] = (ikj_dist, k)
 
   #print "--------------------"
   #dump()
 
 
-def _get_raw_path (src, dst):
+def _get_raw_path (src, dst, dpid):
   """
   Get a raw path (just a list of nodes to traverse)
   """
@@ -105,9 +108,9 @@ def _get_raw_path (src, dst):
   if src is dst:
     # We're here!
     return []
-  if path_map[src][dst][0] is None:
+  if path_map[src][dst][dpid][0] is None:
     return None
-  intermediate = path_map[src][dst][1]
+  intermediate = path_map[src][dst][dpid][1]
   if intermediate is None:
     # Directly connected
     return []
@@ -115,7 +118,7 @@ def _get_raw_path (src, dst):
          _get_raw_path(intermediate, dst)
 
 
-def _get_path (src, dst):
+def _get_path (src, dst, dpid):
   """
   Gets a cooked path -- a list of (node,out_port)
   """
@@ -123,7 +126,7 @@ def _get_path (src, dst):
   if src == dst:
     path = [src]
   else:
-    path = _get_raw_path(src, dst)
+    path = _get_raw_path(src, dst, dpid)
     if path is None: return None
     path = [src] + path + [dst]
 
@@ -209,7 +212,7 @@ class TopoSwitch (DHCPD):
     src = self
     for dst in switches_by_dpid.itervalues():
       if dst is src: continue
-      p = _get_path(src, dst)
+      p = _get_path(src, dst, self.dpid)
       if p is None: continue
 
       msg = of.ofp_flow_mod()
@@ -380,6 +383,7 @@ class TopoSwitch (DHCPD):
 
   def _handle_PacketIn (self, event):
     packet = event.parsed
+    self.log.debug("I'm %d in packet in! src=%s dst=%s", event.dpid, packet.src, packet.dst)
     arpp = packet.find('arp')
     if arpp is not None:
       if event.port != ipinfo(arpp.protosrc)[1]:
