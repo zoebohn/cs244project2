@@ -18,20 +18,28 @@ def graph_to_hosts_and_switches(net):
     def host_ip(node):
         return '10.0.0' + str(node)
     def switch_ip(node):
-        return '10.' + str(node) + '.1.0'
+        return '10.' + str(node) + '.0.0'
+    def host_mac(node):
+        return '00:00:00:00:0:0' + str(node)
+    def switch_mac(node):
+        return '00:00:00:0' + str(node) + ':00:00'
     data = None
     with open('generated_rrg', 'r') as infile:
         data = json.load(infile)
     graph = nx.readwrite.node_link_graph(data)
 
-    for node in graph.nodes():
-        h = net.addHost( 'h' + str(node), ip=host_ip(node))
-        s = net.addSwitch( 's' + str(node), ip=switch_ip(node))
+    for node_orig in graph.nodes():
+        node = node_orig + 1
+        h = net.addHost( 'h' + str(node), ip=host_ip(node), mac=host_mac(node))
+        print "mac is " + switch_mac(node) + ', ' + host_mac(node)
+        s = net.addSwitch( 's' + str(node), ip=switch_ip(node), mac=switch_mac(node))
         net.addLink( h, s, port1=node, port2=node)
 
-    for node in graph.nodes():
+    for node_orig in graph.nodes():
+        node = node_orig + 1
         s = 's' + str(node)
-        for neigh in graph.neighbors(node):
+        for neigh_orig in graph.neighbors(node_orig):
+            neigh = neigh_orig + 1
             if (node >= neigh):
                 continue
             sn =  's' + str(neigh)
