@@ -1,40 +1,19 @@
-# Copyright 2012 James McCauley
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at:
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""
-This component is for use with the OpenFlow tutorial.
-
-It acts as a simple hub, but can be modified to act like an L2
-learning switch.
-
-It's roughly similar to the one Brandon Heller did for NOX.
-"""
-
-from heapq import heappush, heappop
-from itertools import count
 from pox.core import core
-from mininet.log import setLogLevel
-from pox.lib.util import dpidToStr
-import pox.ext.ripl_routing as ripl
-import pox.ext.build_topology as topo
+from collections import defaultdict
 import pox.openflow.libopenflow_01 as of
+from pox.lib.packet.ethernet import ethernet
+from pox.lib.packet.arp import arp
 import networkx as nx
 import json
+from itertools import islice
 
 log = core.getLogger()
-#setLogLevel('info')
 
+# [src][dst][curr-sw] -> port 
+path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
+
+# [ip addr] -> mac addr
+arp_table = defaultdict(lambda:None)
 
 class Tutorial (object):
   """
@@ -46,21 +25,10 @@ class Tutorial (object):
     # send it messages!
     self.connection = connection
 
+    self.dpid = connection.dpid
+
     # This binds our PacketIn event listener
     connection.addListeners(self)
-
-    # Use this table to keep track of which ethernet address is on
-    # which switch port (keys are MACs, values are ports).
-    self.mac_to_port = {}
-
-    self.switches = {}
-
-    with open('generated_rrg', 'r') as infile:
-        data = json.load(infile)
-    self.graph = nx.readwrite.node_link_graph(data)
-
-    self.t = topo.JellyFishTop()
-    self.r = ripl.STStructuredRouting(self.t)
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -78,167 +46,50 @@ class Tutorial (object):
     # Send message to switch
     self.connection.send(msg)
 
-
-  def act_like_hub (self, packet, packet_in):
-    """
-    Implement hub-like behavior -- send all packets to all ports besides
-    the input port.
-    """
-    # We want to output to all ports -- we do that using the special
-    # OFPP_ALL port as the output port.  (We could have also used
-    # OFPP_FLOOD.)
-    self.resend_packet(packet_in, of.OFPP_ALL)
-
-    # Note that if we didn't get a valid buffer_id, a slightly better
-    # implementation would check that we got the full data before
-    # sending it (len(packet_in.data) should be == packet_in.total_len)).
-
-
   def act_like_switch (self, packet, packet_in):
     """
     Implement switch-like behavior.
     """
-
     # Here's some psuedocode to start you off implementing a learning
     # switch.  You'll need to rewrite it as real Python code.
-
     # Learn the port for the source MAC
-    if packet.src not in self.mac_to_port:
-        self.mac_to_port[packet.src] = packet_in.in_port 
-
-    if packet.dst in self.mac_to_port:
-      # Send packet out the associated port
-      self.resend_packet(packet_in, self.mac_to_port[packet.dst])
-
-      # Once you have the above working, try pushing a flow entry
-      # instead of resending the packet (comment out the above and
-      # uncomment and complete the below.)
-
-      log.debug("Installing flow...")
-      # Maybe the log statement should have source/destination/port?
-
-#      msg = of.ofp_flow_mod()
-      #
-      ## Set fields to match received packet
-#      msg.match = of.ofp_match.from_packet(packet)
-      #
-      #< Set other fields of flow_mod (timeouts? buffer_id?) >
-      #
-      #< Add an output action, and send -- similar to resend_packet() >
-#      msg.data = packet_in
-
-      # Add an action to send to the specified port
-#      action = of.ofp_action_output(port = self.mac_to_port[packet.dst])
-#      msg.actions.append(action)
-
-      # Send message to switch
-#      self.connection.send(msg)
-
+    log.debug("packet is %s", packet)
+    ipp = packet.find('ipv4')
+    a = packet.find('arp')
+    if ipp is not None:
+        log.debug("Got packet from %s to %s at switch %d", ipp.srcip, ipp.dstip, self.dpid)
+        log.debug("port to send to: %d", path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid][0])
+        self.resend_packet(packet_in, path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid][0])
+    elif a is not None:
+        if packet.payload.opcode == arp.REQUEST:
+            log.debug("protodst is %s", a.protodst)
+            '''
+            arp_reply = arp()
+            arp_reply.hwtype = a.hwtype
+            arp_reply.prototype = a.prototype
+            arp_reply.hwlen = a.hwlen
+            arp_reply.protolen = a.protolen
+            arp_reply.opcode = arp.REPLY
+            arp_reply.hwdst = a.hwsrc
+            arp_reply.protodst = a.protosrc
+            arp_reply.protosrc = a.protodst
+            arp_reply.hwsrc = arp_table[a.protodst]
+            e = ethernet()
+            e.type = ethernet.ARP_TYPE
+            e.dst = packet.src
+            e.src = arp_table[a.protodst]
+            e.payload = arp_reply
+            self.resend_packet(e.pack(), of.OFPP_IN_PORT)
+            '''
     else:
-      # Flood the packet out everything but the input port
-      # This part looks familiar, right?
-      self.resend_packet(packet_in, of.OFPP_ALL)
-
-  def _install_proactive_flows(self):
-    t = self.t
-    # Install L2 src/dst flow for every possible pair of hosts.
-    for src in sorted(self._raw_dpids(t.g.nodes())):
-      for dst in sorted(self._raw_dpids(t.g.nodes())):
-        self._install_proactive_path(src, dst)
-
-  def _install_proactive_path(self, src, dst):
-    """Install entries on route between two hosts based on MAC addrs.
-    
-    src and dst are unsigned ints.
-    """
-    src_sw = self.t.up_nodes(self.t.id_gen(dpid = src).name_str())
-    assert len(src_sw) == 1
-    src_sw_name = src_sw[0]
-    dst_sw = self.t.up_nodes(self.t.id_gen(dpid = dst).name_str())
-    assert len(dst_sw) == 1
-    dst_sw_name = dst_sw[0]
-    hash_ = self._src_dst_hash(src, dst)
-    route = self.r.get_route(src_sw_name, dst_sw_name, hash_)
-    log.info("route: %s" % route)
-
-    # Form OF match
-    match = of.ofp_match()
-    match.dl_src = EthAddr(src).toRaw()
-    match.dl_dst = EthAddr(dst).toRaw()
-
-    dst_host_name = self.t.id_gen(dpid = dst).name_str()
-    final_out_port, ignore = self.t.port(route[-1], dst_host_name)
-    for i, node in enumerate(route):
-      node_dpid = self.t.id_gen(name = node).dpid
-      if i < len(route) - 1:
-        next_node = route[i + 1]
-        out_port, next_in_port = self.t.port(node, next_node)
-      else:
-        out_port = final_out_port
-      self.switches[node_dpid].install(out_port, match)
-
-
-  def install(self, port, match, buf = -1, idle_timeout = 0, hard_timeout = 0,
-              priority = of.OFP_DEFAULT_PRIORITY):
-    msg = of.ofp_flow_mod()
-    msg.match = match
-    msg.idle_timeout = idle_timeout
-    msg.hard_timeout = hard_timeout
-    msg.priority = priority
-    msg.actions.append(of.ofp_action_output(port = port))
-    msg.buffer_id = buf
-    self.connection.send(msg)
-
-  def _raw_dpids(self, arr):
-    "Convert a list of name strings (from Topo object) to numbers."
-    return [self.t.id_gen(name = a).dpid for a in arr]  
-
-  def _flood(self, event):
-    packet = event.parsed
-    dpid = event.dpid
-    #log.info("PacketIn: %s" % packet)
-    in_port = event.port
-    t = self.t
-
-    # Broadcast to every output port except the input on the input switch.
-    # Hub behavior, baby!
-    for sw in self._raw_dpids(t.g.nodes()):
-      #log.info("considering sw %s" % sw)
-      ports = []
-      sw_name = t.id_gen(dpid = sw).name_str()
-      for host in t.down_nodes(sw_name):
-        sw_port, host_port = t.port(sw_name, host)
-        if sw != dpid or (sw == dpid and in_port != sw_port):
-          ports.append(sw_port)
-      # Send packet out each non-input host port
-      # TODO: send one packet only.
-      for port in ports:
-        #log.info("sending to port %s on switch %s" % (port, sw))
-        #buffer_id = event.ofp.buffer_id
-        #if sw == dpid:
-        #  self.switches[sw].send_packet_bufid(port, event.ofp.buffer_id)
-        #else:
-        self.switches[sw].send_packet_data(port, event.data)
-        #  buffer_id = -1 
-
-  def _handle_packet_proactive(self, event):
-    packet = event.parse()
-
-    if packet.dst.isMulticast():
-      self._flood(event)
-    else:
-      dpids = self._raw_dpids(self.t.g.nodes())
-      if packet.src.toInt() not in dpids:
-        raise Exception("unrecognized src: %s" % packet.src)
-      if packet.dst.toInt() not in dpids:
-        raise Exception("unrecognized dst: %s" % packet.dst)
-      raise Exception("known host MACs but entries weren't pushed down?!?")
+        log.warning("ERROR: packet is not IP. Dropping")
 
   def _handle_PacketIn (self, event):
     """
     Handles packet in messages from the switch.
     """
 
+    print "**got packet at switch " + str(event.dpid) + "***"
     packet = event.parsed # This is the parsed packet data.
     if not packet.parsed:
       log.warning("Ignoring incomplete packet")
@@ -248,43 +99,168 @@ class Tutorial (object):
 
     # Comment out the following line and uncomment the one after
     # when starting the exercise.
-    print "Src: " + str(packet.src)
-    print "Dest: " + str(packet.dst)
-    print "Event port: " + str(event.port)
-    #self.act_like_hub(packet, packet_in)
-    log.info("packet in")
-    #self.act_like_switch(packet, packet_in)
-    self._handle_packet_proactive(event)
+    #print "Src: " + str(packet.src)
+    #print "Dest: " + str(packet.dst)
+    #print "Event port: " + str(event.port)
+    #log.info("packet in")
+    self.act_like_switch(packet, packet_in)
 
-  def _handle_ConnectionUp(self, event):
-    sw = self.switches.get(event.dpid)
-    sw_str = dpidToStr(event.dpid)
-    log.info("Saw switch come up: %s", sw_str)
-    name_str = self.t.id_gen(dpid = event.dpid).name_str()
-    if name_str not in self.t.switches():
-      log.warn("Ignoring unknown switch %s" % sw_str)
-      return
-    if sw is None:
-      log.info("Added fresh switch %s" % sw_str)
-      sw = Switch()
-      self.switches[event.dpid] = sw
-      sw.connect(event.connection)
-    else:
-      log.info("Odd - already saw switch %s come up" % sw_str)
-      sw.connect(event.connection)
-    sw.connection.send(of.ofp_set_config(miss_send_len=MISS_SEND_LEN))
+def write_paths_wrapper():
+  hosts = ['10.0.0.1','10.0.0.2','10.0.0.3','10.0.0.4']
+  paths = defaultdict(lambda:defaultdict(lambda:[]))
+  link_to_port = defaultdict(lambda:defaultdict(lambda:None))
+  ip_to_dpid = defaultdict(lambda:None)
 
-    if len(self.switches) == len(self.t.switches()):
-      log.info("Woo!  All switches up")
-      self.all_switches_up = True
-      self._install_proactive_flows()
+  # src dst - [[path 1] [path2]]; path 1: [first hop....dst]
+  paths['10.0.0.1']['10.0.0.2'] = [['10.1.0.0', '10.0.0.2']]
+  paths['10.0.0.1']['10.0.0.3'] = [['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']]
+  paths['10.0.0.1']['10.0.0.4'] = [['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']]
+  
+  paths['10.0.0.2']['10.0.0.1'] = [['10.1.0.0', '10.0.0.1']]
+  paths['10.0.0.2']['10.0.0.3'] = [['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']]
+  paths['10.0.0.2']['10.0.0.4'] = [['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']]
+  
+  paths['10.0.0.3']['10.0.0.1'] = [['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.1']]
+  paths['10.0.0.3']['10.0.0.2'] = [['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.2']]
+  paths['10.0.0.3']['10.0.0.4'] = [['10.3.0.0', '10.0.0.4']]
+  
+  paths['10.0.0.4']['10.0.0.1'] = [['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.1']]
+  paths['10.0.0.4']['10.0.0.2'] = [['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.2']]
+  paths['10.0.0.4']['10.0.0.3'] = [['10.3.0.0', '10.0.0.3']]
+
+  link_to_port['10.1.0.0']['10.2.0.0'] = 1
+  link_to_port['10.2.0.0']['10.1.0.0'] = 2
+  link_to_port['10.2.0.0']['10.3.0.0'] = 3
+  link_to_port['10.3.0.0']['10.2.0.0'] = 4
+  link_to_port['10.0.0.1']['10.1.0.0'] = 9
+  link_to_port['10.1.0.0']['10.0.0.1'] = 10
+  link_to_port['10.0.0.2']['10.1.0.0'] = 11
+  link_to_port['10.1.0.0']['10.0.0.2'] = 12
+  link_to_port['10.0.0.3']['10.3.0.0'] = 13
+  link_to_port['10.3.0.0']['10.0.0.3'] = 14
+  link_to_port['10.0.0.4']['10.3.0.0'] = 15
+  link_to_port['10.3.0.0']['10.0.0.4'] = 16
+
+  ip_to_dpid['10.1.0.0'] = 1
+  ip_to_dpid['10.2.0.0'] = 2
+  ip_to_dpid['10.3.0.0'] = 3
+  ip_to_dpid['10.4.0.0'] = 4
+
+  write_paths(hosts, paths, link_to_port, ip_to_dpid)
+
+def jellyfish_graph_to_dicts():
+    def host_ip(node):
+        return '10.0.0.' + str(node)
+
+    def switch_ip(node):
+        return '10.' + str(node) + '.1.0'
+    
+    data = None
+    with open('generated_rrg', 'r') as infile:
+        data = json.load(infile)
+    graph = nx.readwrite.node_link_graph(data)
+    
+    ecmp_path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
+    link_to_port = defaultdict(lambda:defaultdict(lambda:None))
+    ip_to_dpid = defaultdict(lambda:None)
+    hosts = []
+
+    host_to_ip = {}
+    switch_to_ip = {}
+
+    # set host and switch ips (every switch gets one host)
+    for node_orig in graph.nodes():
+        node = node_orig + 1
+        switch_to_ip[node] = switch_ip(node) 
+        host_to_ip[node] = host_ip(node) 
+        hosts.append(host_to_ip[node])
+    # dpids for switches 
+        ip_to_dpid[switch_to_ip[node]] = node
+    
+    # links to ports
+    for node_orig in graph.nodes():
+        node = node_orig + 1
+        host_ip = host_to_ip[node]
+        switch_ip = switch_to_ip[node]
+        link_to_port[host_ip][switch_ip] = node 
+        link_to_port[switch_ip][host_ip] = node 
+        for neigh_orig in graph.neighbors(node_orig):
+            neigh = neigh_orig + 1
+            neigh_switch_ip = switch_to_ip[neigh]
+            link_to_port[neigh_switch_ip][switch_ip] = node 
+            link_to_port[switch_ip][neigh_switch_ip] = neigh 
+
+    # set path ips
+    for node_i_orig in graph.nodes():
+        node_i = node_i_orig + 1
+        node_j = node_i + 1
+        if (node_j == len(graph.nodes()) + 1):
+            node_j = 1
+        ecmp_paths = list(islice(nx.all_shortest_paths(graph, node_i_orig, node_j - 1), 7))
+        #k_paths = list(islice(nx.shortest_simple_paths(graph, node_i, node_j), 4))
+
+        ecmp_ip_paths = []
+        ecmp_ip_rev_paths = []
+        for ecmp_path in ecmp_paths:
+            ecmp_ip_path = []
+            ecmp_ip_rev_path = []
+            print "ecmp_path" + str(ecmp_path)
+            for i in range(0, len(ecmp_path)):
+                ecmp_ip_path.append(switch_to_ip[ecmp_path[i] + 1])
+                ecmp_ip_rev_path.insert(0, switch_to_ip[ecmp_path[i] + 1])
+            # add end host
+            ecmp_ip_path.append(host_to_ip[ecmp_path[len(ecmp_path) - 1] + 1])
+            ecmp_ip_rev_path.append(host_to_ip[ecmp_path[0] + 1])
+            ecmp_ip_paths.append(ecmp_ip_path)
+            ecmp_ip_rev_paths.append(ecmp_ip_rev_path)
+
+
+        src_ip = host_to_ip[node_i]
+        dst_ip = host_to_ip[node_j]
+        print "source node: " + str(node_i)
+        print "dst node: " + str(node_j)
+        print "source ip: " + src_ip
+        print "dst ip: " + dst_ip
+        print "paths: " + str(ecmp_ip_paths)
+        print "reverse paths: " + str(ecmp_ip_rev_paths)
+        print ""
+
+        ecmp_path_map[src_ip][dst_ip] = ecmp_ip_paths
+        ecmp_path_map[dst_ip][src_ip] = ecmp_ip_rev_paths
+
+    #print ecmp_path_map
+    return hosts, ecmp_path_map, link_to_port, ip_to_dpid
+
+def jellyfish_write_paths():
+    hosts, ecmp_path_map, link_to_port, ip_to_dpid = jellyfish_graph_to_dicts()
+    write_paths(hosts, ecmp_path_map, link_to_port, ip_to_dpid)
+
+def write_paths(hosts, paths, link_to_port, ip_to_dpid):
+  # hosts is list of all host IPs
+  # paths is [srcip][dstip] -> switch dpids
+  # link_to_port is [sw1-dpid][sw2-dpid] -> port
+  for src in hosts:
+    for dst in hosts:
+      paths_list = paths[src][dst]
+      for path in paths_list:
+        sw1 = None
+        for sw2 in path:
+          if sw1 is not None:
+            port = link_to_port[sw1][sw2]
+            if path_map[src][dst][ip_to_dpid[sw1]] is None:
+                path_map[src][dst][ip_to_dpid[sw1]] = []
+            path_map[src][dst][ip_to_dpid[sw1]].append(port)
+            log.debug("pathmap[%s][%s][%d] = %d", src, dst, ip_to_dpid[sw1], port)
+          sw1 = sw2
 
 def launch ():
   """
   Starts the component
   """
-  #setLogLevel('info')
   def start_switch (event):
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
+  jellyfish_write_paths()
+  #from proto.arp_responder import launch as arp_launch
+  #arp_launch('10.0.0.2=00:00:00:00:00:02', eat_packets=False)
   core.openflow.addListenerByName("ConnectionUp", start_switch)
