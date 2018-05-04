@@ -6,6 +6,7 @@ from pox.lib.packet.arp import arp
 import networkx as nx
 import json
 from itertools import islice
+import random
 
 log = core.getLogger()
 
@@ -57,30 +58,15 @@ class Tutorial (object):
     ipp = packet.find('ipv4')
     a = packet.find('arp')
     if ipp is not None:
+        paths = path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid]
         log.debug("Got packet from %s to %s at switch %d", ipp.srcip, ipp.dstip, self.dpid)
-        log.debug("port to send to: %d", path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid][0])
-        self.resend_packet(packet_in, path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid][0])
+        path_num = random.randint(0, len(paths) - 1)
+        port = paths[path_num]
+        log.debug("port to send to: %d", port)
+        self.resend_packet(packet_in, port)
     elif a is not None:
         if packet.payload.opcode == arp.REQUEST:
             log.debug("protodst is %s", a.protodst)
-            '''
-            arp_reply = arp()
-            arp_reply.hwtype = a.hwtype
-            arp_reply.prototype = a.prototype
-            arp_reply.hwlen = a.hwlen
-            arp_reply.protolen = a.protolen
-            arp_reply.opcode = arp.REPLY
-            arp_reply.hwdst = a.hwsrc
-            arp_reply.protodst = a.protosrc
-            arp_reply.protosrc = a.protodst
-            arp_reply.hwsrc = arp_table[a.protodst]
-            e = ethernet()
-            e.type = ethernet.ARP_TYPE
-            e.dst = packet.src
-            e.src = arp_table[a.protodst]
-            e.payload = arp_reply
-            self.resend_packet(e.pack(), of.OFPP_IN_PORT)
-            '''
     else:
         log.warning("ERROR: packet is not IP. Dropping")
 
@@ -105,6 +91,7 @@ class Tutorial (object):
     #log.info("packet in")
     self.act_like_switch(packet, packet_in)
 
+# NOT USED: JUST FOR DEBUGGING
 def write_paths_wrapper():
   hosts = ['10.0.0.1','10.0.0.2','10.0.0.3','10.0.0.4']
   paths = defaultdict(lambda:defaultdict(lambda:[]))
@@ -148,7 +135,8 @@ def write_paths_wrapper():
 
   write_paths(hosts, paths, link_to_port, ip_to_dpid)
 
-def jellyfish_graph_to_dicts():
+def jellyfish_graph_to_dicts(useEcmp):
+    # true if use ECMP, false if use k-shortest-paths
     def host_ip(node):
         return '10.0.0.' + str(node)
 
@@ -160,7 +148,7 @@ def jellyfish_graph_to_dicts():
         data = json.load(infile)
     graph = nx.readwrite.node_link_graph(data)
     
-    ecmp_path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
+    calc_path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
     link_to_port = defaultdict(lambda:defaultdict(lambda:None))
     ip_to_dpid = defaultdict(lambda:None)
     hosts = []
@@ -196,23 +184,25 @@ def jellyfish_graph_to_dicts():
         node_j = node_i + 1
         if (node_j == len(graph.nodes()) + 1):
             node_j = 1
-        ecmp_paths = list(islice(nx.all_shortest_paths(graph, node_i_orig, node_j - 1), 7))
-        #k_paths = list(islice(nx.shortest_simple_paths(graph, node_i, node_j), 4))
+        if (useEcmp):
+            calc_paths = list(islice(nx.all_shortest_paths(graph, node_i_orig, node_j - 1), 7))
+        else:
+            calc_paths = list(islice(nx.shortest_simple_paths(graph, node_i_orig, node_j - 1), 4))
 
-        ecmp_ip_paths = []
-        ecmp_ip_rev_paths = []
-        for ecmp_path in ecmp_paths:
-            ecmp_ip_path = []
-            ecmp_ip_rev_path = []
-            print "ecmp_path" + str(ecmp_path)
-            for i in range(0, len(ecmp_path)):
-                ecmp_ip_path.append(switch_to_ip[ecmp_path[i] + 1])
-                ecmp_ip_rev_path.insert(0, switch_to_ip[ecmp_path[i] + 1])
+        calc_ip_paths = []
+        calc_ip_rev_paths = []
+        for calc_path in calc_paths:
+            calc_ip_path = []
+            calc_ip_rev_path = []
+            print "path" + str(calc_path)
+            for i in range(0, len(calc_path)):
+                calc_ip_path.append(switch_to_ip[calc_path[i] + 1])
+                calc_ip_rev_path.insert(0, switch_to_ip[calc_path[i] + 1])
             # add end host
-            ecmp_ip_path.append(host_to_ip[ecmp_path[len(ecmp_path) - 1] + 1])
-            ecmp_ip_rev_path.append(host_to_ip[ecmp_path[0] + 1])
-            ecmp_ip_paths.append(ecmp_ip_path)
-            ecmp_ip_rev_paths.append(ecmp_ip_rev_path)
+            calc_ip_path.append(host_to_ip[calc_path[len(calc_path) - 1] + 1])
+            calc_ip_rev_path.append(host_to_ip[calc_path[0] + 1])
+            calc_ip_paths.append(calc_ip_path)
+            calc_ip_rev_paths.append(calc_ip_rev_path)
 
 
         src_ip = host_to_ip[node_i]
@@ -221,18 +211,19 @@ def jellyfish_graph_to_dicts():
         print "dst node: " + str(node_j)
         print "source ip: " + src_ip
         print "dst ip: " + dst_ip
-        print "paths: " + str(ecmp_ip_paths)
-        print "reverse paths: " + str(ecmp_ip_rev_paths)
+        print "paths: " + str(calc_ip_paths)
+        print "reverse paths: " + str(calc_ip_rev_paths)
         print ""
 
-        ecmp_path_map[src_ip][dst_ip] = ecmp_ip_paths
-        ecmp_path_map[dst_ip][src_ip] = ecmp_ip_rev_paths
+        calc_path_map[src_ip][dst_ip] = calc_ip_paths
+        calc_path_map[dst_ip][src_ip] = calc_ip_rev_paths
 
     #print ecmp_path_map
-    return hosts, ecmp_path_map, link_to_port, ip_to_dpid
+    return hosts, calc_path_map, link_to_port, ip_to_dpid
 
-def jellyfish_write_paths():
-    hosts, ecmp_path_map, link_to_port, ip_to_dpid = jellyfish_graph_to_dicts()
+def jellyfish_write_paths(useEcmp):
+    # true if ECMP, false if k-shortest-paths
+    hosts, ecmp_path_map, link_to_port, ip_to_dpid = jellyfish_graph_to_dicts(useEcmp)
     write_paths(hosts, ecmp_path_map, link_to_port, ip_to_dpid)
 
 def write_paths(hosts, paths, link_to_port, ip_to_dpid):
@@ -260,7 +251,5 @@ def launch ():
   def start_switch (event):
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
-  jellyfish_write_paths()
-  #from proto.arp_responder import launch as arp_launch
-  #arp_launch('10.0.0.2=00:00:00:00:00:02', eat_packets=False)
+  jellyfish_write_paths(False)
   core.openflow.addListenerByName("ConnectionUp", start_switch)
