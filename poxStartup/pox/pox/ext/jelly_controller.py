@@ -251,5 +251,5 @@ def launch ():
   def start_switch (event):
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
-  jellyfish_write_paths(False)
+  jellyfish_write_paths(True)
   core.openflow.addListenerByName("ConnectionUp", start_switch)
