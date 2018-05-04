@@ -239,6 +239,7 @@ class ARPResponder (object):
 
     if self._check_for_flood(dpid, a):
       # Didn't know how to handle this ARP, so just flood it
+      log.info("arp table: %s", _arp_table)
       msg = "%s flooding ARP %s %s => %s" % (dpid_to_str(dpid),
           {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
           'op:%i' % (a.opcode,)), a.protosrc, a.protodst)
@@ -261,6 +262,7 @@ class ARPResponder (object):
     """
     if a.protodst in _arp_table:
       return _arp_table[a.protodst].flood
+    log.warning("%s NOT IN ARP TABLE!!!!", a.protodst)
     return True
 
 
@@ -281,4 +283,5 @@ def launch (timeout=ARP_TIMEOUT, no_flow=False, eat_packets=True,
   core.Interactive.variables['arp'] = _arp_table
   for k,v in kw.iteritems():
     _arp_table[IPAddr(k)] = Entry(v, static=True)
+  log.debug("startup arp table: %s", _arp_table)
   core.registerNew(ARPResponder)
