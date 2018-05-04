@@ -7,7 +7,7 @@ from pox.lib.packet.arp import arp
 log = core.getLogger()
 
 # [src][dst][curr-sw] -> port 
-path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(list)))
+path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
 
 # [ip addr] -> mac addr
 arp_table = defaultdict(lambda:None)
@@ -104,7 +104,7 @@ class Tutorial (object):
 
 def write_paths_wrapper():
   hosts = ['10.0.0.1','10.0.0.2','10.0.0.3','10.0.0.4']
-  paths = defaultdict(lambda:defaultdict(lambda:[[]]))
+  paths = defaultdict(lambda:defaultdict(lambda:[]))
   link_to_port = defaultdict(lambda:defaultdict(lambda:None))
   ip_to_dpid = defaultdict(lambda:None)
 
@@ -151,12 +151,14 @@ def write_paths(hosts, paths, link_to_port, ip_to_dpid):
   # link_to_port is [sw1-dpid][sw2-dpid] -> port
   for src in hosts:
     for dst in hosts:
-      paths = paths[src][dst]
-      for path in paths:
+      paths_list = paths[src][dst]
+      for path in paths_list:
         sw1 = None
         for sw2 in path:
           if sw1 is not None:
             port = link_to_port[sw1][sw2]
+            if path_map[src][dst][ip_to_dpid[sw1]] is None:
+                path_map[src][dst][ip_to_dpid[sw1]] = []
             path_map[src][dst][ip_to_dpid[sw1]].append(port)
             log.debug("pathmap[%s][%s][%d] = %d", src, dst, ip_to_dpid[sw1], port)
           sw1 = sw2
