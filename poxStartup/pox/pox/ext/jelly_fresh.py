@@ -7,7 +7,7 @@ from pox.lib.packet.arp import arp
 log = core.getLogger()
 
 # [src][dst][curr-sw] -> port 
-path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
+path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(list)))
 
 # [ip addr] -> mac addr
 arp_table = defaultdict(lambda:None)
@@ -55,8 +55,8 @@ class Tutorial (object):
     a = packet.find('arp')
     if ipp is not None:
         log.debug("Got packet from %s to %s at switch %d", ipp.srcip, ipp.dstip, self.dpid)
-        log.debug("port to send to: %d", path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid])
-        self.resend_packet(packet_in, path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid])
+        log.debug("port to send to: %d", path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid][0])
+        self.resend_packet(packet_in, path_map[str(ipp.srcip)][str(ipp.dstip)][self.dpid][0])
     elif a is not None:
         if packet.payload.opcode == arp.REQUEST:
             log.debug("protodst is %s", a.protodst)
@@ -104,26 +104,26 @@ class Tutorial (object):
 
 def write_paths_wrapper():
   hosts = ['10.0.0.1','10.0.0.2','10.0.0.3','10.0.0.4']
-  paths = defaultdict(lambda:defaultdict(lambda:[]))
+  paths = defaultdict(lambda:defaultdict(lambda:[[]]))
   link_to_port = defaultdict(lambda:defaultdict(lambda:None))
   ip_to_dpid = defaultdict(lambda:None)
 
   # src dst - [[path 1] [path2]]; path 1: [first hop....dst]
-  paths['10.0.0.1']['10.0.0.2'] = ['10.1.0.0', '10.0.0.2']
-  paths['10.0.0.1']['10.0.0.3'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']
-  paths['10.0.0.1']['10.0.0.4'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']
+  paths['10.0.0.1']['10.0.0.2'] = [['10.1.0.0', '10.0.0.2']]
+  paths['10.0.0.1']['10.0.0.3'] = [['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']]
+  paths['10.0.0.1']['10.0.0.4'] = [['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']]
   
-  paths['10.0.0.2']['10.0.0.1'] = ['10.1.0.0', '10.0.0.1']
-  paths['10.0.0.2']['10.0.0.3'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']
-  paths['10.0.0.2']['10.0.0.4'] = ['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']
+  paths['10.0.0.2']['10.0.0.1'] = [['10.1.0.0', '10.0.0.1']]
+  paths['10.0.0.2']['10.0.0.3'] = [['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.3']]
+  paths['10.0.0.2']['10.0.0.4'] = [['10.1.0.0', '10.2.0.0', '10.3.0.0', '10.0.0.4']]
   
-  paths['10.0.0.3']['10.0.0.1'] = ['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.1']
-  paths['10.0.0.3']['10.0.0.2'] = ['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.2']
-  paths['10.0.0.3']['10.0.0.4'] = ['10.3.0.0', '10.0.0.4']
+  paths['10.0.0.3']['10.0.0.1'] = [['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.1']]
+  paths['10.0.0.3']['10.0.0.2'] = [['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.2']]
+  paths['10.0.0.3']['10.0.0.4'] = [['10.3.0.0', '10.0.0.4']]
   
-  paths['10.0.0.4']['10.0.0.1'] = ['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.1']
-  paths['10.0.0.4']['10.0.0.2'] = ['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.2']
-  paths['10.0.0.4']['10.0.0.3'] = ['10.3.0.0', '10.0.0.3']
+  paths['10.0.0.4']['10.0.0.1'] = [['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.1']]
+  paths['10.0.0.4']['10.0.0.2'] = [['10.3.0.0', '10.2.0.0', '10.1.0.0', '10.0.0.2']]
+  paths['10.0.0.4']['10.0.0.3'] = [['10.3.0.0', '10.0.0.3']]
 
   link_to_port['10.1.0.0']['10.2.0.0'] = 1
   link_to_port['10.2.0.0']['10.1.0.0'] = 2
@@ -151,14 +151,15 @@ def write_paths(hosts, paths, link_to_port, ip_to_dpid):
   # link_to_port is [sw1-dpid][sw2-dpid] -> port
   for src in hosts:
     for dst in hosts:
-      path = paths[src][dst]
-      sw1 = None
-      for sw2 in path:
-        if sw1 is not None:
-          port = link_to_port[sw1][sw2]
-          path_map[src][dst][ip_to_dpid[sw1]] = port
-          log.debug("pathmap[%s][%s][%d] = %d", src, dst, ip_to_dpid[sw1], port)
-        sw1 = sw2
+      paths = paths[src][dst]
+      for path in paths:
+        sw1 = None
+        for sw2 in path:
+          if sw1 is not None:
+            port = link_to_port[sw1][sw2]
+            path_map[src][dst][ip_to_dpid[sw1]].append(port)
+            log.debug("pathmap[%s][%s][%d] = %d", src, dst, ip_to_dpid[sw1], port)
+          sw1 = sw2
 
 def launch ():
   """
