@@ -3,7 +3,14 @@ import json
 from collections import defaultdict
 from itertools import islice
 
+
 def graph_to_dicts():
+    def host_ip(node):
+        return '10.0.0' + str(node)
+
+    def switch_ip(node):
+        return '10.' + str(node) + '.1.0'
+    
     data = None
     with open('generated_rrg', 'r') as infile:
         data = json.load(infile)
@@ -19,27 +26,22 @@ def graph_to_dicts():
 
     # set host and switch ips (every switch gets one host)
     for node in graph.nodes():
-        switch_to_ip[node] = '10.' + str(node) + '.1.0'
-        host_to_ip[node] = '10.0.0.' + str(node)
+        switch_to_ip[node] = switch_ip(node) 
+        host_to_ip[node] = host_ip(node) 
         hosts.append(host_to_ip[node])
     # dpids for switches 
         ip_to_dpid[switch_to_ip[node]] = node
     
     # links to ports
-    link_counter = 1
     for node in graph.nodes():
         host_ip = host_to_ip[node]
         switch_ip = switch_to_ip[node]
-        link_to_port[host_ip][switch_ip] = link_counter
-        link_counter += 1
-        link_to_port[switch_ip][host_ip] = link_counter
-        link_counter += 1
+        link_to_port[host_ip][switch_ip] = node 
+        link_to_port[switch_ip][host_ip] = node 
         for neigh in graph.neighbors(node):
             neigh_switch_ip = switch_to_ip[neigh]
-            link_to_port[neigh_switch_ip][switch_ip] = link_counter
-            link_counter += 1
-            link_to_port[switch_ip][neigh_switch_ip] = link_counter
-            link_counter += 1
+            link_to_port[neigh_switch_ip][switch_ip] = node 
+            link_to_port[switch_ip][neigh_switch_ip] = neigh 
 
     # set path ips
     for node_i in graph.nodes():
@@ -73,4 +75,28 @@ def graph_to_dicts():
 
     #print ecmp_path_map
     return hosts, ecmp_path_map, link_to_port, ip_to_dpid
+
+'''
+def graph_to_hosts_and_switches(net):
+    def host_ip(node):
+        return '10.0.0' + str(node)
+
+    def switch_ip(node):
+        return '10.' + str(node) + '.1.0'
+    data = None
+    with open('generated_rrg', 'r') as infile:
+        data = json.load(infile)
+    graph = nx.readwrite.node_link_graph(data)
+   
+    for node in graph.nodes():
+        h = net.addHost( 'h' + str(node), ip=host_ip(node))
+        s = net.addSwitch( 's' + str(node), ip=switch_ip(node))
+        net.addLink( h, s, port1=node, port2=node)
+        for neigh in graph.neighbors(node):
+            if (node >= neigh):
+                continue # don't repeat edges
+            sn = net.addSwitch( 's' + str(neigh), ip=switch_ip(neigh))
+            net.addLink( s, sn, port1=neigh, port2=node)
+    return 
+'''
 graph_to_dicts()
