@@ -60,6 +60,7 @@ class Tutorial (object):
     elif a is not None:
         if packet.payload.opcode == arp.REQUEST:
             log.debug("protodst is %s", a.protodst)
+            '''
             arp_reply = arp()
             arp_reply.hwtype = a.hwtype
             arp_reply.prototype = a.prototype
@@ -76,7 +77,7 @@ class Tutorial (object):
             e.src = arp_table[a.protodst]
             e.payload = arp_reply
             self.resend_packet(e.pack(), of.OFPP_IN_PORT)
-
+            '''
     else:
         log.warning("ERROR: packet is not IP. Dropping")
 
@@ -168,5 +169,5 @@ def launch ():
     Tutorial(event.connection)
   write_paths_wrapper()
   #from proto.arp_responder import launch as arp_launch
-  #arp_launch(eat_packets=False)
+  #arp_launch('10.0.0.2=00:00:00:00:00:02', eat_packets=False)
   core.openflow.addListenerByName("ConnectionUp", start_switch)
