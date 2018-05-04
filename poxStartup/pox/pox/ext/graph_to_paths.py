@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 from itertools import islice
 
-def main():
+def graph_to_dicts():
     data = None
     with open('generated_rrg', 'r') as infile:
         data = json.load(infile)
@@ -12,7 +12,8 @@ def main():
     ecmp_path_map = defaultdict(lambda:defaultdict(lambda:defaultdict(lambda:None)))
     link_to_port = defaultdict(lambda:defaultdict(lambda:None))
     ip_to_dpid = defaultdict(lambda:None)
-    
+    hosts = []
+
     host_to_ip = {}
     switch_to_ip = {}
 
@@ -20,6 +21,7 @@ def main():
     for node in graph.nodes():
         switch_to_ip[node] = '10.' + str(node) + '.1.0'
         host_to_ip[node] = '10.0.0.' + str(node)
+        hosts.append(host_to_ip[node])
     # dpids for switches 
         ip_to_dpid[switch_to_ip[node]] = node
     
@@ -70,5 +72,5 @@ def main():
         ecmp_path_map[src_ip][dst_ip] = ecmp_ip_paths
 
     #print ecmp_path_map
-
-main()
+    return hosts, ecmp_path_map, link_to_port, ip_to_dpid
+graph_to_dicts()
