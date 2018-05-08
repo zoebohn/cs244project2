@@ -4,6 +4,7 @@ def parse_test(numFlows, ecmp):
     averages = []
     num_hosts = 6
     num_runs = 5
+    link_capacity = 10000.0
     for i in range(0, num_runs):
         for j in range (0, num_hosts):
             with open("tests/test_host%s_run%s_flows%s_ecmp%s" % (j, i, numFlows, ecmp)) as f:
@@ -19,10 +20,11 @@ def parse_test(numFlows, ecmp):
                 average = total / count
                 averages.append(average)
     overall_avg = sum(averages) / len(averages)
+    percent = overall_avg / link_capacity * 100
     if (ecmp):
-        print "average over %s runs with %s hosts for num flows %s with ECMP: %s" % (num_runs, num_hosts, numFlows, ecmp, overall_avg)
+        print "average over %s runs with %s hosts with %s flows with ECMP: %s%%" % (num_runs, num_hosts, numFlows, percent)
     else:
-        print "average over %s runs with %s hosts for num flows %s with 8SP: %s" % (num_runs, num_hosts, numFlows, ecmp, overall_avg)
+        print "average over %s runs with %s hosts with %s flows with 8SP: %s%%" % (num_runs, num_hosts, numFlows, percent)
 
 def main():
     parse_test(1, True)

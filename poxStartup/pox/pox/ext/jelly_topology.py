@@ -11,7 +11,7 @@ from mininet.log import setLogLevel
 sys.path.append("../../")
 from subprocess import Popen
 from mininet.node import Controller, RemoteController, Node
-from mininet.link import Link, Intf
+from mininet.link import TCLink, Intf
 import re
 from sys import argv
 #from time import sleep, time
@@ -35,7 +35,7 @@ def graph_to_hosts_and_switches(net):
         h = net.addHost( 'h' + str(node), ip=host_ip(node), mac=host_mac(node))
         print "mac is " + switch_mac(node) + ', ' + host_mac(node)
         s = net.addSwitch( 's' + str(node), ip=switch_ip(node), mac=switch_mac(node))
-        net.addLink( h, s, port1=node, port2=node)
+        net.addLink( h, s, bw=10, port1=node, port2=node)
 
     for node_orig in graph.nodes():
         node = node_orig + 1
@@ -45,7 +45,7 @@ def graph_to_hosts_and_switches(net):
             if (node >= neigh):
                 continue
             sn =  's' + str(neigh)
-            net.addLink( s, sn, port1=neigh, port2=node)
+            net.addLink( s, sn, bw=10, port1=neigh, port2=node)
 
 def runThroughputTest(net, numFlows, runNum, ecmp):
     info( '*** Starting run %s ***' % runNum)
@@ -57,7 +57,7 @@ def runThroughputTest(net, numFlows, runNum, ecmp):
     while i < len(net.hosts):
         curr = net.hosts[i]
         info('conn between %s and %s' % (prev.name, curr.name))
-        prev.sendCmd("iperf -t %s -P %s -i %s -f k -i .5 -c %s >> tests/test_host%s_run%s_flows%s_ecmp%s" % (5, numFlows, 5, curr.IP(), i, runNum, numFlows, ecmp ) )
+        prev.sendCmd("iperf -t %s -P %s -i %s -f k -i .5 -c %s > tests/test_host%s_run%s_flows%s_ecmp%s" % (5, numFlows, 5, curr.IP(), i, runNum, numFlows, ecmp ) )
         prev = curr
         i += 1
     info ('*** Running iperf ***')
@@ -85,7 +85,7 @@ def aggNet():
         for i in range(0, numRuns):
 
 	    net = Mininet( topo=None,
-               	build=False)
+               	build=False, link=TCLink)
 
 	    net.addController( 'c0',
                   	controller=RemoteController,
@@ -104,7 +104,7 @@ def aggNet():
         for i in range(0, numRuns):
 
 	    net = Mininet( topo=None,
-               	build=False)
+               	build=False, link=TCLink)
 
 	    net.addController( 'c0',
                   	controller=RemoteController,
