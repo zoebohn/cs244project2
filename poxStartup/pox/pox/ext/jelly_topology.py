@@ -12,6 +12,8 @@ sys.path.append("../../")
 from subprocess import Popen
 from mininet.node import Controller, RemoteController, Node
 from mininet.link import Link, Intf
+import re
+from sys import argv
 #from time import sleep, time
 
 def graph_to_hosts_and_switches(net):
@@ -20,9 +22,9 @@ def graph_to_hosts_and_switches(net):
     def switch_ip(node):
         return '10.' + str(node) + '.0.0'
     def host_mac(node):
-        return '00:00:00:00:0:0' + str(node)
+        return '00:00:00:00:00:' + str(node)
     def switch_mac(node):
-        return '00:00:00:0' + str(node) + ':00:00'
+        return '00:00:00:' + str(node) + ':00:00'
     data = None
     with open('generated_rrg', 'r') as infile:
         data = json.load(infile)
@@ -45,23 +47,77 @@ def graph_to_hosts_and_switches(net):
             sn =  's' + str(neigh)
             net.addLink( s, sn, port1=neigh, port2=node)
 
+def runThroughputTest(net, numFlows, runNum, ecmp):
+    info( '*** Starting run %s ***' % runNum)
+    for dest in net.hosts:
+        dest.cmd( "iperf -s &" )
+        info('starting %s\n' % dest.name)
+    prev = net.hosts[len(net.hosts) - 1]
+    i = 0
+    while i < len(net.hosts):
+        curr = net.hosts[i]
+        info('conn between %s and %s' % (prev.name, curr.name))
+        prev.sendCmd("iperf -t %s -P %s -i %s -f k -i .5 -c %s >> tests/test_host%s_run%s_flows%s_ecmp%s" % (5, numFlows, 5, curr.IP(), i, runNum, numFlows, ecmp ) )
+        prev = curr
+        i += 1
+    info ('*** Running iperf ***')
+    results = []
+    prev = net.hosts[len(net.hosts) - 1]
+    i = 0
+    while i < len(net.hosts):
+        curr = net.hosts[i]
+        result = prev.waitOutput()
+        #curr.cmd("kill -9 %iperf")
+        #curr.cmd("wait")
+        info("output: %s" % result)
+        prev = curr
+        i += 1
+
 def aggNet():
 
 	CONTROLLER_IP='127.0.0.1'
 
-	net = Mininet( topo=None,
+        ecmp = argv[1] == "ecmp"
+        numRuns = 5
+        
+        # run with 1 flow
+
+        for i in range(0, numRuns):
+
+	    net = Mininet( topo=None,
                	build=False)
 
-	net.addController( 'c0',
+	    net.addController( 'c0',
                   	controller=RemoteController,
                   	ip=CONTROLLER_IP,
                   	port=6633)
 
-        graph_to_hosts_and_switches(net)
+            graph_to_hosts_and_switches(net)
 
-	net.start()
-	CLI( net )
-	net.stop()
+	    net.start()
+	    runThroughputTest(net, 1, i, ecmp)
+            #CLI( net )
+	    net.stop()
+
+        # run with 8 flows
+        
+        for i in range(0, numRuns):
+
+	    net = Mininet( topo=None,
+               	build=False)
+
+	    net.addController( 'c0',
+                  	controller=RemoteController,
+                  	ip=CONTROLLER_IP,
+                  	port=6633)
+
+            graph_to_hosts_and_switches(net)
+
+	    net.start()
+	    runThroughputTest(net, 8, i, ecmp)
+            #CLI( net )
+	    net.stop()
+
 
 if __name__ == '__main__':
 	setLogLevel( 'info' )

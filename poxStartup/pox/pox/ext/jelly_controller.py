@@ -3,6 +3,7 @@ from collections import defaultdict
 import pox.openflow.libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.arp import arp
+from pox.lib.util import str_to_bool
 import networkx as nx
 import json
 from itertools import islice
@@ -141,7 +142,7 @@ def jellyfish_graph_to_dicts(useEcmp):
         return '10.0.0.' + str(node)
 
     def switch_ip(node):
-        return '10.' + str(node) + '.1.0'
+        return '10.' + str(node) + '.0.0'
     
     data = None
     with open('generated_rrg', 'r') as infile:
@@ -187,7 +188,7 @@ def jellyfish_graph_to_dicts(useEcmp):
         if (useEcmp):
             calc_paths = list(islice(nx.all_shortest_paths(graph, node_i_orig, node_j - 1), 7))
         else:
-            calc_paths = list(islice(nx.shortest_simple_paths(graph, node_i_orig, node_j - 1), 4))
+            calc_paths = list(islice(nx.shortest_simple_paths(graph, node_i_orig, node_j - 1), 8))
 
         calc_ip_paths = []
         calc_ip_rev_paths = []
@@ -244,12 +245,13 @@ def write_paths(hosts, paths, link_to_port, ip_to_dpid):
             log.debug("pathmap[%s][%s][%d] = %d", src, dst, ip_to_dpid[sw1], port)
           sw1 = sw2
 
-def launch ():
+def launch (ecmp=True):
   """
   Starts the component
   """
   def start_switch (event):
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
-  jellyfish_write_paths(True)
+  print "ecmp is %s" % ecmp
+  jellyfish_write_paths(str_to_bool(ecmp))
   core.openflow.addListenerByName("ConnectionUp", start_switch)
